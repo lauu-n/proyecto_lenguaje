@@ -1,76 +1,117 @@
 #!/usr/bin/env python3
-"""
-Script de validación léxica y sintáctica para el DSL FlujoDatos (Corte 1).
+# ================================================================
+# validar.py — DSL FlujoDatos (Corte 1)
+# ================================================================
+# Este script sirve para revisar si un archivo .flujo esta bien
+# escrito.
+#
+# No ejecuta el programa del DSL. Eso viene despues, en el Corte 2,
+# cuando exista el Visitor.
+#
+# Lo unico que hace aqui es:
+# 1. Leer el archivo .flujo
+# 2. Convertirlo en tokens (lexer)
+# 3. Revisar el orden de los tokens (parser)
+# 4. Avisar si hay errores, con linea y columna
+#
+# Como usarlo:
+#   python3 src/validar.py ejemplos/validos/*.flujo
+#   python3 src/validar.py ejemplos/invalidos/*.flujo
+#   python3 src/validar.py ruta/a/un/archivo.flujo
+#
+# Antes de correrlo hay que generar el lexer y el parser, con:
+#   make generar
+# (esto ejecuta: cd grammar && antlr4 -Dlanguage=Python3 -visitor -o ../src/parser FlujoDatos.g4)
+#
+# Tambien hay que tener instalado antlr4-python3-runtime
+# (ver requirements.txt).
 
-Este script NO ejecuta los programas del DSL (eso corresponde a los
-Cortes 2 y 3, cuando exista el Visitor). Su único propósito es construir
-el árbol de análisis sintáctico y reportar errores léxicos/sintácticos
-con línea y columna, como evidencia de que el front-end del lenguaje
-reconoce programas correctos y rechaza programas incorrectos.
-
-Uso:
-    python3 src/validar.py ejemplos/validos/*.flujo
-    python3 src/validar.py ejemplos/invalidos/*.flujo
-    python3 src/validar.py ruta/a/un/archivo.flujo
-
-Requisito previo (una sola vez, o cada vez que cambie la gramática):
-    make generar
-    # equivale a: cd grammar && antlr4 -Dlanguage=Python3 -visitor -o ../src/parser FlujoDatos.g4
-
-y tener instalado antlr4-python3-runtime (ver requirements.txt).
-
--------------------------------------------------------------------
-GUÍA DE LECTURA: qué archivo apunta a cuál, y quién hereda de quién
--------------------------------------------------------------------
-Este archivo se apoya en dos "capas" de código que NO viven aquí:
-
-1. La librería `antlr4` (paquete `antlr4-python3-runtime`, instalado
-   por pip, ver requirements.txt). Es código de terceros, distribuido
-   por el proyecto ANTLR, con el algoritmo genérico de tokenización y
-   parseo. De ahí importamos piezas genéricas y reutilizables para
-   CUALQUIER gramática, no solo la nuestra: `FileStream` (lee un
-   archivo de texto), `CommonTokenStream` (almacena/entrega tokens al
-   parser) y `ErrorListener` (clase base para reaccionar a errores).
-
-2. `FlujoDatosLexer` y `FlujoDatosParser` (carpeta src/parser/, NO
-   incluida en el repositorio: se regenera con `make generar`, ver
-   .gitignore). Estas clases SÍ son específicas de nuestro lenguaje,
-   pero nosotros no las escribimos a mano: ANTLR las genera a partir
-   de grammar/FlujoDatos.g4. Por herencia:
-       FlujoDatosLexer(Lexer)   -> Lexer viene de antlr4 (capa 1)
-       FlujoDatosParser(Parser) -> Parser viene de antlr4 (capa 1)
-   Es decir, la clase genérica `Lexer` de antlr4 aporta el algoritmo
-   de reconocimiento; `FlujoDatosLexer` solo añade la tabla de reglas
-   léxicas concretas (CARGAR, ID, STRING, ...) definidas en el .g4.
-   Ver docs/conceptos_antlr.md para el mapa completo con diagrama.
-
-Con eso, el flujo de este script es:
-
-    archivo.flujo
-        -> FileStream                (lee el texto)
-        -> FlujoDatosLexer           (texto -> tokens)
-        -> CommonTokenStream         (guarda/entrega los tokens)
-        -> FlujoDatosParser.programa()  (tokens -> árbol de análisis)
-"""
 import sys
 from pathlib import Path
 
-# Capa 1: piezas genéricas del runtime de ANTLR (no específicas de
-# FlujoDatos). `ErrorListener` es la clase base que reemplazamos más
-# abajo con ColectorDeErrores.
+# ================================================================
+# IMPORTACIONES
+# ================================================================
+# Aqui traemos el codigo que ya existe y que no escribimos nosotros.
+#
+# IMPORTANTE — por que estas importaciones SI estan permitidas:
+#
+# En este proyecto se nos pidio no usar librerias de ciencia de datos
+# como pandas, NumPy o Matplotlib. La idea es que nosotros mismos
+# construyamos, desde cero, la parte de datos, filtros, agregaciones
+# y graficas (eso es el Corte 2 y el Corte 3).
+#
+# Pero eso NO aplica a ANTLR4. ANTLR4 no es una libreria de ciencia
+# de datos: es la herramienta obligatoria del curso para construir el
+# lexer y el parser (esta pedida en el enunciado del proyecto, no es
+# una libreria de apoyo opcional). Usar `antlr4-python3-runtime` no es
+# lo mismo que usar pandas: no nos resuelve el problema del dominio
+# (ventas, filtros, graficas), solo nos da la maquinaria generica de
+# tokenizar y reconocer gramaticas, que de todas formas ANTLR4 nos
+# obliga a usar para generar el lexer y el parser. Reimplementar
+# ANTLR4 desde cero seria reimplementar el curso completo, no el DSL.
+#
+# Por eso: SI se puede importar antlr4 aqui. NO se puede importar
+# pandas, NumPy o Matplotlib mas adelante en el proyecto.
 from antlr4 import FileStream, CommonTokenStream
 from antlr4.error.ErrorListener import ErrorListener
 
-# Capa 2: el lexer y el parser generados a partir de grammar/FlujoDatos.g4.
-# Como esos archivos no están en el repositorio (se regeneran con
-# `make generar`), primero hay que agregar src/parser/ al sys.path
-# para que Python los encuentre al hacer el import de abajo.
+# ----------------------------------------------------------------
+# DE DONDE HEREDA CADA COSA (para la sustentacion)
+# ----------------------------------------------------------------
+# Este proyecto usa dos "capas" de codigo. Es importante no
+# confundirlas cuando pregunten de donde hereda una clase:
+#
+# CAPA 1: el runtime de antlr4 (paquete antlr4-python3-runtime,
+# instalado con pip, viene en requirements.txt). Esto es codigo de
+# terceros, escrito por el proyecto ANTLR, NO por nosotros. Aqui
+# viven las clases BASE genericas que sirven para CUALQUIER gramatica,
+# no solo la nuestra:
+#   - FileStream          -> lee un archivo de texto
+#   - CommonTokenStream   -> guarda y entrega tokens al parser
+#   - Lexer               -> algoritmo generico de tokenizacion
+#   - Parser              -> algoritmo generico de reconocimiento
+#   - ErrorListener       -> clase base para reaccionar a errores
+#
+# CAPA 2: el codigo generado por ANTLR a partir de nuestro archivo
+# grammar/FlujoDatos.g4 (carpeta src/parser/, ver mas abajo). Estas
+# clases SI son especificas de FlujoDatos, pero nosotros NO las
+# escribimos a mano, las genera el comando `antlr4`. Por eso tampoco
+# estan guardadas en el repositorio (ver .gitignore): se recrean cada
+# vez que se corre `make generar`.
+#
+# La relacion de herencia entre las dos capas es:
+#
+#   class FlujoDatosLexer(Lexer):            # Lexer viene de la capa 1
+#   class FlujoDatosParser(Parser):          # Parser viene de la capa 1
+#
+# En palabras simples: `Lexer` y `Parser` (capa 1) ya saben COMO
+# tokenizar y reconocer en general (el algoritmo de automatas esta
+# ahi). `FlujoDatosLexer` y `FlujoDatosParser` (capa 2) heredan ese
+# comportamiento y solo le agregan la tabla de reglas CONCRETAS de
+# nuestro lenguaje (CARGAR, ID, STRING, la regla `programa`, etc.),
+# que ANTLR saca directamente de grammar/FlujoDatos.g4. Osea:
+# `FlujoDatosLexer` no reimplementa la tokenizacion desde cero, la
+# hereda de `Lexer` y solo aporta el "que" (las reglas de FlujoDatos),
+# no el "como" (el algoritmo de reconocimiento).
+#
+# Esta es tambien la razon por la que antlr4 SI se puede importar
+# aqui, aunque el proyecto prohiba usar librerias como pandas, NumPy
+# o Matplotlib: esa prohibicion es para no depender de librerias que
+# ya resuelvan el DOMINIO del proyecto (datos, filtros, graficas), y
+# antlr4 no resuelve nada de eso. Ademas, el enunciado del curso pide
+# ANTLR4 como herramienta obligatoria para el lexer/parser (no es una
+# libreria de apoyo opcional como pandas). Reimplementar `Lexer` y
+# `Parser` desde cero seria reimplementar ANTLR4 completo, no el DSL.
+#
+# Como FlujoDatosLexer y FlujoDatosParser no estan en el repositorio,
+# primero hay que decirle a Python donde buscarlos una vez generados.
 sys.path.append(str(Path(__file__).resolve().parent / "parser"))
 
 try:
-    # Estos dos imports fallan si todavía no se ejecutó `make generar`,
-    # porque src/parser/FlujoDatosLexer.py y FlujoDatosParser.py aún no
-    # existen como archivos físicos en disco.
+    # Si estos dos imports fallan, es porque todavia no se corrio
+    # `make generar` y los archivos FlujoDatosLexer.py /
+    # FlujoDatosParser.py todavia no existen en el disco.
     from FlujoDatosLexer import FlujoDatosLexer
     from FlujoDatosParser import FlujoDatosParser
 except ImportError:
@@ -81,19 +122,44 @@ except ImportError:
     sys.exit(1)
 
 
+# ================================================================
+# CLASE: ColectorDeErrores
+# ================================================================
+# Esta clase sirve para guardar los errores que encuentre el lexer
+# o el parser.
+#
+# DE DONDE HEREDA Y POR QUE (para la sustentacion):
+#
+# ColectorDeErrores(ErrorListener) hereda de
+# `antlr4.error.ErrorListener.ErrorListener`, que es de la capa 1
+# (viene del runtime de antlr4, no la escribimos nosotros).
+#
+# `ErrorListener` define un "contrato": cualquier clase que herede de
+# ella puede sobreescribir el metodo `syntaxError`, y ANTLR se encarga
+# de LLAMAR ese metodo automaticamente cada vez que el lexer o el
+# parser encuentran algo que no reconocen (esto se llama "hook": nosotros
+# no llamamos syntaxError nunca a mano, ANTLR lo invoca solo).
+#
+# Por defecto (si no hicieramos esta clase), tanto FlujoDatosLexer
+# como FlujoDatosParser usan un `ConsoleErrorListener` (tambien de la
+# capa 1) que simplemente imprime el error por consola y sigue de
+# largo, sin guardar nada.
+#
+# Aqui usamos HERENCIA + OVERRIDE (sobreescritura): creamos una
+# subclase propia que hereda toda la estructura de `ErrorListener`
+# pero reemplaza el metodo `syntaxError` por nuestra propia version,
+# que en vez de imprimir directo guarda el mensaje (con linea y
+# columna) en una lista (`self.errores`). Esto nos permite decidir
+# nosotros mismos, mas abajo en `validar_archivo`, que hacer con esos
+# errores (mostrarlos todos juntos y marcar el archivo como invalido).
+#
+# Se crea UNA instancia distinta de ColectorDeErrores para el lexer y
+# otra para el parser (ver validar_archivo), porque cada uno puede
+# fallar por razones distintas: el lexer falla si encuentra un
+# caracter que ninguna regla lexica reconoce (error LEXICO); el parser
+# falla si los tokens estan en un orden que ninguna regla del parser
+# permite (error SINTACTICO).
 class ColectorDeErrores(ErrorListener):
-    """Hereda de `antlr4.error.ErrorListener.ErrorListener` (capa 1).
-
-    Por defecto, tanto FlujoDatosLexer como FlujoDatosParser usan un
-    `ConsoleErrorListener` que simplemente imprime los errores por
-    stderr y sigue de largo. Aquí escribimos nuestra propia subclase
-    que SOBREESCRIBE (override) el método `syntaxError`, el único que
-    ANTLR invoca automáticamente cada vez que el lexer o el parser
-    encuentran algo que no reconocen. En vez de imprimir directo,
-    guardamos el mensaje (con línea y columna) en una lista, para
-    poder decidir nosotros mismos qué hacer con esos errores más abajo
-    en `validar_archivo`.
-    """
 
     def __init__(self):
         super().__init__()
@@ -103,36 +169,48 @@ class ColectorDeErrores(ErrorListener):
         self.errores.append(f"  linea {line}, columna {column}: {msg}")
 
 
+# ================================================================
+# FUNCION: validar_archivo
+# ================================================================
+# Esta funcion revisa un solo archivo .flujo.
+#
+# Pasos:
+# 1. Leer el archivo
+# 2. Convertirlo en tokens
+# 3. Revisar el orden de los tokens
+# 4. Mostrar si es valido o invalido
 def validar_archivo(ruta: str) -> bool:
-    # 1) FileStream (antlr4, capa 1): lee el archivo .flujo como texto.
+
+    # Paso 1: leer el archivo como texto.
     entrada = FileStream(ruta, encoding="utf-8")
 
-    # 2) FlujoDatosLexer (generado, capa 2): recorre el texto caracter
-    #    a caracter y produce tokens según las reglas léxicas del .g4
-    #    (CARGAR, ID, STRING, INT, etc.). Le quitamos su listener de
-    #    errores por defecto y le ponemos el nuestro.
+    # Paso 2: el lexer recorre el texto letra por letra y lo separa
+    # en tokens (CARGAR, ID, STRING, INT, etc.), segun las reglas
+    # escritas en grammar/FlujoDatos.g4.
     lexer = FlujoDatosLexer(entrada)
     errores_lexicos = ColectorDeErrores()
     lexer.removeErrorListeners()
     lexer.addErrorListener(errores_lexicos)
 
-    # 3) CommonTokenStream (antlr4, capa 1): actúa de buffer entre el
-    #    lexer y el parser, entregando tokens uno a uno bajo demanda.
+    # Paso 3: el CommonTokenStream guarda los tokens y se los va
+    # entregando al parser de a uno.
     tokens = CommonTokenStream(lexer)
 
-    # 4) FlujoDatosParser (generado, capa 2): consume el stream de
-    #    tokens y aplica las reglas del parser (programa, sentencia,
-    #    expresion, ...) para construir el árbol de análisis.
+    # Paso 4: el parser revisa si los tokens vienen en un orden
+    # valido, segun las reglas del .g4 (programa, sentencia,
+    # expresion, etc.).
     parser = FlujoDatosParser(tokens)
     errores_sintacticos = ColectorDeErrores()
     parser.removeErrorListeners()
     parser.addErrorListener(errores_sintacticos)
 
-    # `programa()` es el método generado a partir de la regla raíz
-    # `programa` del .g4 (ver comentarios allí). Devuelve un
-    # `ProgramaContext`: la raíz del árbol de análisis sintáctico.
+    # programa() es el metodo generado a partir de la regla raiz
+    # "programa" del .g4. Devuelve el arbol de analisis sintactico
+    # completo.
     arbol = parser.programa()
 
+    # Si hubo errores lexicos o sintacticos, se muestran y se marca
+    # el archivo como invalido.
     errores = errores_lexicos.errores + errores_sintacticos.errores
     if errores:
         print(f"[INVALIDO] {ruta}")
@@ -140,9 +218,8 @@ def validar_archivo(ruta: str) -> bool:
             print(err)
         return False
 
-    # toStringTree() imprime el árbol en formato LISP (paréntesis
-    # anidados); es solo para inspección rápida en consola, no es una
-    # estructura que se vaya a reutilizar en cortes futuros.
+    # Si no hubo errores, se muestra un resumen corto del arbol
+    # (solo para verlo rapido en la consola).
     resumen_arbol = arbol.toStringTree(recog=parser)
     if len(resumen_arbol) > 90:
         resumen_arbol = resumen_arbol[:90] + " ..."
@@ -151,6 +228,11 @@ def validar_archivo(ruta: str) -> bool:
     return True
 
 
+# ================================================================
+# FUNCION: main
+# ================================================================
+# Esta funcion recibe los archivos por linea de comandos y los
+# valida uno por uno.
 def main():
     if len(sys.argv) < 2:
         print("Uso: python3 src/validar.py <archivo1.flujo> [archivo2.flujo ...]")
