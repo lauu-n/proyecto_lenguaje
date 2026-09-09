@@ -1,7 +1,6 @@
 # Conceptos clave de ANTLR usados en este proyecto
 
-Esta guía no es un entregable evaluado del Corte 1: es material de
-apoyo para repasar, mientras se revisa el código, los fundamentos de
+Esta guía es material de apoyo para repasar, mientras se revisa el código, los fundamentos de
 ANTLR que este proyecto usa (herencia entre clases, qué archivo genera
 o importa a cuál). El documento de alcance (`documento_alcance.md`)
 sigue siendo la referencia formal del diseño del lenguaje.
@@ -23,11 +22,11 @@ las reglas en MAYÚSCULA (`CARGAR`, `ID`, `STRING`, ...) son reglas de
 
 ## 2. Qué genera el comando `antlr4` y de qué hereda cada cosa
 
-Al ejecutar `make generar` (que internamente corre
-`antlr4 -Dlanguage=Python3 -visitor -o ../src/parser FlujoDatos.g4`
+Al ejecutar `make generar` (mediante `tools/generar.py`, que invoca el JAR de ANTLR con
+`-Dlanguage=Python3 -visitor -o ../src/parser FlujoDatos.g4`
 desde dentro de `grammar/`), ANTLR **lee el `.g4` y escribe código
-Python nuevo** en `src/parser/`. Nada de este código se versiona en
-git (ver `.gitignore`): es 100% reproducible a partir de la gramática.
+Python nuevo** en `src/parser/`. Este código se versiona en
+Git como entregable del Corte 1 y puede regenerarse desde la gramática.
 
 | Archivo generado (en `src/parser/`) | Clase Python           | Hereda de           | ¿De dónde viene la clase base? |
 |---|---|---|---|
@@ -60,7 +59,7 @@ flowchart TD
     G -- "antlr4 (make generar)" --> V["src/parser/FlujoDatosVisitor.py<br/>class FlujoDatosVisitor(ParseTreeVisitor)<br/>(generado, aún sin usar)"]
     L --> S["src/validar.py<br/>(escrito a mano)"]
     P --> S
-    S -- "importa ErrorListener, FileStream,<br/>CommonTokenStream" --> R["antlr4-python3-runtime<br/>(paquete de terceros, pip)"]
+    S -- "importa ErrorListener, InputStream,<br/>CommonTokenStream" --> R["antlr4-python3-runtime<br/>(paquete de terceros, pip)"]
     S -- "lee" --> E["ejemplos/validos/*.flujo<br/>ejemplos/invalidos/*.flujo"]
 ```
 
@@ -73,8 +72,9 @@ lo *usa* por medio de un `import`, nunca lo edita.
 
 Cuando se corre `python3 src/validar.py archivo.flujo`, pasa esto:
 
-1. `FileStream("archivo.flujo")` — de `antlr4-python3-runtime` — abre
-   y lee el archivo como texto.
+1. `Path.read_text(encoding="utf-8-sig")` lee la fuente UTF-8 con BOM
+   opcional; `InputStream` entrega ese texto al lexer. Un error de lectura
+   se reporta sin cancelar los archivos restantes.
 2. `FlujoDatosLexer(entrada)` — generado — recorre ese texto y produce
    tokens (`CARGAR`, `STRING`, `ID`, `';'`, ...).
 3. `CommonTokenStream(lexer)` — de `antlr4-python3-runtime` — actúa de
@@ -119,3 +119,16 @@ a mano, porque ANTLR ya lo resolvió llamando al método correcto.
   con comentarios sobre cada import y cada paso del pipeline.
 - [`documento_alcance.md`](documento_alcance.md) — alcance formal,
   gramática BNF/EBNF y justificación de cada decisión de diseño.
+
+
+## 7. Resultado de análisis y consola
+
+`analizar_texto()` devuelve un `Resultado` con el árbol completo y
+diagnósticos tipados. No imprime y no ejecuta el DSL. `validar_archivo()`
+se encarga de lectura y presentación; `main()` procesa argumentos y
+devuelve un código de salida. Los tests importan el analizador mediante
+`src.validar` y comprueban la consola en procesos separados.
+
+La clase `ColectorDeErrores` recibe la etapa (léxico/sintáctico), conserva
+los errores y convierte las columnas internas de ANTLR (desde cero) a
+columnas públicas desde uno. El detalle de uso está en el README.

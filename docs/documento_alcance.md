@@ -13,23 +13,19 @@
 operaciones (`|>`), para describir flujos reproducibles de carga,
 preparación, análisis y visualización de datos.
 
-El enunciado del proyecto sugiere seis dominios posibles para el caso
-de estudio final: ventas, movilidad, datos ambientales, educación,
-salud pública y telecomunicaciones. Se eligió **ventas** por tener la
-**menor complejidad léxica** de las seis opciones:
+Se eligió **ventas** porque el repositorio ya dispone de un CSV de
+ejemplo con cinco columnas, un esquema pequeño y operaciones fáciles de
+demostrar. La elección mantiene continuidad con el vocabulario del curso.
+No implica que otros dominios necesiten más tokens: sus unidades, códigos
+o coordenadas también podrían representarse como cadenas y números.
 
-| Dominio | Por qué se descartó (mayor complejidad léxica) |
-|---|---|
-| Movilidad | Requiere coordenadas geoespaciales y formatos de fecha/hora combinados |
-| Datos ambientales | Requiere unidades científicas (ppm, °C, µg/m³) y notación con símbolos adicionales |
-| Educación | Requiere escalas de calificación heterogéneas entre instituciones |
-| Salud pública | Requiere codificación clínica y vocabulario sensible |
-| Telecomunicaciones | Requiere unidades técnicas compuestas (Mbps, ms de latencia) |
-| **Ventas (elegido)** | Solo usa literales numéricos, cadenas de texto y fechas como texto plano; sin unidades ni notación especializada |
+Casos de uso del corte 1 (solo reconocimiento):
 
-Ventas también coincide con el ejemplo de referencia del enunciado del
-proyecto, lo que facilita mantener continuidad de vocabulario entre lo
-propuesto por el curso y lo implementado por el equipo.
+1. Describir la carga de `datos/ventas.csv` y asociarla a `ventas`.
+2. Seleccionar `ciudad`, `unidades` y `precio`, y filtrar registros con
+   unidades y precios positivos.
+3. Describir una gráfica de barras por ciudad y una dispersión entre
+   unidades y precio, sin producir aún imágenes.
 
 ## 2. Usuarios, entradas, salidas y restricciones
 
@@ -45,7 +41,7 @@ propuesto por el curso y lo implementado por el equipo.
     léxicos/sintácticos con línea y columna.
   - En cortes futuros (fuera de alcance aquí): tablas transformadas,
     estadísticas, archivos CSV exportados e imágenes PNG de gráficas.
-- **Restricciones de diseño** (justificadas en la sección 8):
+- **Restricciones de diseño** (justificadas en la sección 11):
   - Los identificadores solo admiten letras ASCII, dígitos y guion
     bajo (sin tildes ni "ñ"); se recomienda escribir `anio` en vez de
     `año`.
@@ -73,9 +69,10 @@ propuesto por el curso y lo implementado por el equipo.
 
 - Delimitación del dominio y casos de uso (ventas).
 - Diseño de palabras reservadas, operadores, literales y sentencias.
-- Gramática formal en BNF/EBNF (sección 6).
+- Gramática formal en BNF/EBNF (sección 7).
 - Gramática implementada en ANTLR4 (`grammar/FlujoDatos.g4`).
-- Instrucciones para generar el lexer y el parser en Python.
+- Lexer, parser y Visitor/Listener base generados en Python con ANTLR
+  4.13.2, incluidos en `src/parser/`, e instrucciones de regeneración.
 - Reconocimiento sintáctico de: asignaciones, expresiones
   aritmético-lógicas, carga de CSV, selección de columnas, filtros con
   comparaciones simples y una instrucción de visualización.
@@ -158,6 +155,16 @@ graficar barras resumen
     guardar como "salidas/precio_ciudad.png";
 ```
 
+Restricciones de composición:
+
+- Cada pipeline comienza con una variable ya escrita como identificador;
+  la carga y el pipeline se expresan en dos sentencias distintas.
+- `titulo` y `guardar como` son opcionales e independientes, pero, si se
+  usan juntos, `titulo` aparece antes de `guardar como`.
+- El lenguaje distingue mayúsculas: `cargar` es reservada y `Cargar` es ID.
+- Los decimales exigen dígitos a ambos lados del punto: `0.5` es válido;
+  `.5` y `1e3` no son formatos admitidos.
+
 ## 7. Gramática formal (BNF/EBNF)
 
 La siguiente gramática EBNF describe el alcance del Corte 1. En la
@@ -166,7 +173,7 @@ expresiones se escribe de forma left-recursive, que ANTLR4 reescribe
 internamente de forma equivalente a la mostrada aquí.
 
 ```ebnf
-programa          ::= { sentencia } ;
+programa          ::= sentencia { sentencia } ;
 sentencia         ::= asignacion ";" | sentenciaGraficar ";" ;
 
 asignacion        ::= IDENTIFICADOR "=" fuenteDatos ;
@@ -192,22 +199,39 @@ expAnd            ::= expIgualdad { "&&" expIgualdad } ;
 expIgualdad       ::= expRelacional { ( "==" | "!=" ) expRelacional } ;
 expRelacional     ::= expAditiva { ( "<" | "<=" | ">" | ">=" ) expAditiva } ;
 expAditiva        ::= expMultiplicativa { ( "+" | "-" ) expMultiplicativa } ;
-expMultiplicativa ::= expUnaria { ( "*" | "/" | "%" ) expUnaria } ;
-expUnaria         ::= ( "-" | "!" ) expUnaria | expPotencia ;
-expPotencia       ::= expPrimaria [ "^" expUnaria ] ;   (* asociativo a la derecha *)
+expMultiplicativa ::= expPotencia { ( "*" | "/" | "%" ) expPotencia } ;
+expPotencia       ::= expUnaria [ "^" expPotencia ] ;   (* asociativo a la derecha *)
+expUnaria         ::= ( "-" | "!" ) expUnaria | expPrimaria ;
 expPrimaria       ::= literal | IDENTIFICADOR | "(" expresion ")" ;
 
 literal           ::= ENTERO | DECIMAL | CADENA | BOOLEANO ;
 BOOLEANO          ::= "verdadero" | "falso" ;
 
-IDENTIFICADOR     ::= LETRA { LETRA | DIGITO | "_" } ;
+IDENTIFICADOR     ::= LETRA { LETRA | DIGITO } ;
 LETRA             ::= "a".."z" | "A".."Z" | "_" ;
 DIGITO            ::= "0".."9" ;
 ENTERO            ::= DIGITO { DIGITO } ;
 DECIMAL           ::= DIGITO { DIGITO } "." DIGITO { DIGITO } ;
-CADENA            ::= '"' { caracter_escapado | cualquier_caracter_excepto('"', '\n') } '"' ;
-COMENTARIO        ::= "#" { cualquier_caracter_excepto('\n') } ;  (* se descarta *)
+CADENA            ::= COMILLA { ESCAPE | CARACTER_CADENA } COMILLA ;
+ESCAPE            ::= BARRA ( COMILLA | BARRA ) ;
+COMILLA           ::= '"' ;
+BARRA             ::= '\' ;
+CARACTER_CADENA    ::= ? cualquier carácter Unicode excepto comilla, barra, CR y LF ? ;
+COMENTARIO        ::= "#" { CARACTER_COMENTARIO } ;
+CARACTER_COMENTARIO ::= ? cualquier carácter Unicode excepto CR y LF ? ;
+ESPACIO           ::= ? espacio, tabulación, CR o LF ? ;
 ```
+
+Se consume el archivo completo (equivalente a `EOF` en ANTLR); comentarios
+y espacios se descartan entre tokens. Un programa vacío o compuesto solo
+por comentarios no es válido. En las reglas léxicas se toma el token más
+largo; a igual longitud, las palabras reservadas tienen prioridad sobre ID.
+
+Solo se admiten `\"` (comilla) y `\\` (barra invertida) dentro de cadenas.
+Una barra sin escape válido se rechaza; no se admiten `\n`, `\t` ni `\q`.
+Para rutas de Windows se puede escribir `"C:/datos/ventas.csv"` o
+`"C:\\datos\\ventas.csv"`. El corte 1 reconoce estos escapes; su
+interpretación como valores corresponde al Visitor del corte 2.
 
 ## 8. Precedencia y asociatividad de operadores
 
@@ -222,11 +246,18 @@ De mayor a menor precedencia:
 7. `&&`
 8. `||`
 
+Los operadores binarios salvo `^` agrupan a la izquierda. Los unarios
+agrupan desde el prefijo hacia su operando y tienen más prioridad que `^`.
+Así, `-2 ^ 2` se reconoce como `(-2) ^ 2`, `2 ^ 3 ^ 2` como
+`2 ^ (3 ^ 2)` y `2 ^ -3` como `2 ^ (-3)`. Se comprueba la estructura
+del árbol sin calcular resultados numéricos.
+
 ## 9. Manejo de errores (Corte 1)
 
 El front-end distingue dos niveles de error, ambos reportados con
 línea y columna mediante un `ErrorListener` propio
-(`src/validar.py`):
+(`src/validar.py`). Las coordenadas públicas empiezan en 1, se muestra
+la categoría y un fragmento de la fuente con indicador de posición:
 
 - **Léxico:** un carácter o secuencia no reconocida por ninguna regla
   del lexer (por ejemplo, una cadena sin comilla de cierre).
@@ -238,7 +269,19 @@ El manejo semántico (variables no declaradas, columnas inexistentes,
 tipos incompatibles) queda para el Corte 2, cuando exista una tabla de
 símbolos.
 
+Si una fuente no existe o no es UTF-8, se informa un error de entrada y
+se continúa con los archivos restantes. El proceso termina con 0 si todos
+son válidos, 1 si hay errores de fuente/lectura y 2 ante uso incorrecto
+de la consola o dependencias ausentes. Los errores léxicos pueden producir
+diagnósticos sintácticos secundarios por la recuperación de ANTLR.
+`--arbol-completo` permite inspeccionar el árbol sin el resumen de consola.
+
 ## 10. Ejemplos de programas válidos e inválidos
+
+La suite `python -m unittest discover -s tests -v` exige aceptación de
+los positivos, rechazo de los negativos y comprueba tokens, precedencia,
+escapes, posiciones de error y estados de salida. Ver también
+[`docs/reporte_pruebas.md`](reporte_pruebas.md).
 
 Ver la carpeta [`ejemplos/`](../ejemplos):
 
@@ -272,13 +315,13 @@ Ver la carpeta [`ejemplos/`](../ejemplos):
   nombres de columna sin tildes, una restricción menor y documentada.
 - **Reconocimiento sintáctico completo de `graficar`** (los cinco
   tipos de gráfica y sus cláusulas opcionales) aunque el corte actual
-  no lo ejecute: permite reutilizar la misma gramática sin cambios
-  cuando en el Corte 3 se implemente la generación real de las
-  gráficas.
+  no lo ejecute: ofrece una base para el Corte 3. Actualmente todos
+  los tipos requieren `x` e `y`; las necesidades de histogramas y cajas
+  podrán motivar una extensión documentada antes de su ejecución.
 - **Reglas con alternativas etiquetadas** (`fuenteCarga`,
   `fuentePipeline`, `fuenteExpresion`, y las etiquetas de `expresion`):
-  no aportan nada en el Corte 1, pero facilitan escribir el Visitor en
-  el Corte 2 sin reestructurar la gramática.
+  distinguen contextos del árbol ya en el Corte 1 y facilitan escribir
+  el Visitor del Corte 2.
 - **Motor de datos y graficación en Python puro, sin pandas, NumPy ni
   Matplotlib**: aunque el enunciado las ofrece como apoyo opcional, el
   equipo prefiere implementar a mano la representación de tablas, las
@@ -294,11 +337,12 @@ Ver la carpeta [`ejemplos/`](../ejemplos):
 - **Corte 2:** implementar el Visitor sobre el árbol ya generado,
   diseñar la tabla de símbolos, y extender la gramática (de forma
   incremental, sin romper lo ya construido) con columnas calculadas
-  (`crear`), agrupamiento (`agrupar por`) y agregaciones (`resumir`).
+  (`crear`), agrupamiento (`agrupar por`) y agregaciones (`resumir`);
+  implementar tratamiento de faltantes y exportación de resultados a CSV.
 - **Corte 3:** implementar `graficar` con código propio (sin
   Matplotlib) que dibuje directamente los cinco tipos de gráfica sobre
-  los datos ya agregados y exporte el resultado a PNG, exportar
-  resultados a CSV, construir la interfaz de línea de comandos y
+  los datos ya agregados y exporte el resultado a PNG, completar
+  la interfaz de ejecución y
   desarrollar el caso de estudio completo con el dataset de ventas.
 
 ## 13. Ver también
