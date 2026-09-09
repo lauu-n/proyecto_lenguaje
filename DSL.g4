@@ -1,3 +1,6 @@
+// PROTOTIPO HISTÓRICO: no forma parte del lenguaje entregado en el corte 1.
+// La gramática activa es grammar/FlujoDatos.g4; no generar desde este archivo.
+// Se conserva para contextualizar la evolución del proyecto en Git.
 grammar DSL;
 
 // Regla de entrada

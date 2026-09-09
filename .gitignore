@@ -4,11 +4,9 @@ __pycache__/
 .venv/
 venv/
 
-# Codigo generado por ANTLR (se regenera con "make generar")
-src/parser/*.py
-src/parser/*.interp
-src/parser/*.tokens
-!src/parser/__init__.py
+# El código generado se entrega y versiona para el corte 1.
+# Solo se excluye la herramienta de generación descargada localmente.
+tools/*.jar
 
 # Salidas de ejecucion (graficas/CSV de fases futuras)
 salidas/*.png
