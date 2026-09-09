@@ -183,7 +183,7 @@ condicion
 // Esta regla reconoce una instrucción para crear una gráfica.
 //
 // La estructura es más o menos:
-// graficar TIPO columna x columna y
+// graficar TIPO dataset x columna_horizontal y columna_vertical
 //
 // Además, el título es opcional.
 // Y guardar la gráfica también es opcional.
@@ -376,8 +376,10 @@ INT
 //
 // Las comillas " " indican dónde empieza y termina el texto.
 // No se permiten saltos de línea dentro del texto.
+// Solo se admiten los escapes de comilla (\") y barra invertida (\\).
+// La barra no pertenece a la alternativa de caracteres ordinarios.
 STRING
-    : '"' ( '\\"' | ~["\r\n] )*? '"'
+    : '"' ( '\\' ["\\] | ~["\\\r\n] )* '"'
     ;
 
 
@@ -398,7 +400,7 @@ STRING
 // Primero debe aparecer una letra o _.
 // Después pueden aparecer letras, números o _.
 ID
-    : LETRA ( LETRA | DIGITO | '_' )*
+    : LETRA ( LETRA | DIGITO )*
     ;
 
 
