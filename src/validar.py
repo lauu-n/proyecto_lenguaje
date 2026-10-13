@@ -7,11 +7,6 @@ lexica y sintacticamente valido segun la gramatica grammar/Cocosette.g4.
 import os
 import sys
 
-# Verificacion de sistema operativo: Linux
-if os.name != "posix":
-    print("Error: Este script fue disenado exclusivamente para ejecutarse en Linux.")
-    sys.exit(1)
-
 sys.path.append("src/parser")
 sys.path.append("src")
 sys.path.append("parser")

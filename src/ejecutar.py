@@ -12,13 +12,7 @@ asegurando un flujo logico facil de sustentar.
 import os
 import sys
 
-# Verificacion de sistema operativo:
-# Este proyecto fue disenado exclusivamente para ejecutarse en Linux (Linux Mint)
-if os.name != "posix":
-    print("Error: Este interprete fue disenado exclusivamente para ejecutarse en Linux.")
-    sys.exit(1)
-
-# Agregar carpetas de modulos al path de Python en Linux
+# Agregar carpetas de modulos al path de Python
 sys.path.append("src/parser")
 sys.path.append("src")
 sys.path.append("parser")
@@ -537,12 +531,12 @@ def ejecutar_codigo(codigo_fuente, memoria=None):
 
 
 def ejecutar_archivo(ruta_archivo, memoria=None):
-    """Lee un archivo .coco en Linux y lo ejecuta."""
+    """Lee un archivo .coco y lo ejecuta."""
     if not os.path.exists(ruta_archivo):
         raise FileNotFoundError(f"No se encontro el archivo: '{ruta_archivo}'")
 
     print("\n========================================================")
-    print(f"  Ejecutando Cocosette en Linux: {ruta_archivo}")
+    print(f"  Ejecutando Cocosette: {ruta_archivo}")
     print("========================================================")
 
     with open(ruta_archivo, "r", encoding="utf-8") as f:
