@@ -1,0 +1,20 @@
+# Entornos y cache de Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Codigo generado por ANTLR (se regenera con "make generar")
+src/parser/*.py
+src/parser/*.interp
+src/parser/*.tokens
+!src/parser/__init__.py
+
+# Salidas de ejecucion (graficas/CSV de fases futuras)
+salidas/*.png
+salidas/*.csv
+
+# Sistema operativo / editores
+.DS_Store
+.vscode/
+.idea/

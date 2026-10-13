@@ -206,12 +206,12 @@ cocoEliminarDuplicados
 
 // CORTE II
 // -------------------------
-// REGLA: cocoNulos
+// REGLA: cocoTratarNulos
 // -------------------------
 // Dos formas de tratar valores faltantes:
 // 1. eliminar_nulos             -> elimina filas con algún nulo
 // 2. rellenar_nulos col con expr -> reemplaza los nulos de esa columna
-cocoNulos
+cocoTratarNulos
     : COCOELIMINARNULL
     | COCORELLENARNULL ID COCOCON expresion
     ;
@@ -477,13 +477,13 @@ COCOBOOLEANO      : 'verdadero' | 'falso';
 COCOCREAR         : 'crear';
 COCOORDENAR       : 'ordenar';
 COCOPOR           : 'por';
-COCOORDENARASC    : 'ascendiente';
-COCOORDENARDESC   : 'descendiente';
+COCOASC           : 'asc' | 'ascendente' | 'ascendiente';
+COCODESC          : 'desc' | 'descendente' | 'descendiente';
 COCORENOMBRAR     : 'renombrar';
 COCOELIMINARDUP   : 'eliminar_duplicados';
 COCOELIMINARNULL  : 'eliminar_nulos';
 COCORELLENARNULL  : 'rellenar_nulos';
-CON               : 'con';
+COCOCON           : 'con';
 COCOCONVERTIR     : 'convertir';
 COCOA             : 'a';
 COCOENTERO        : 'entero';
@@ -561,7 +561,7 @@ INT
 // Las comillas " " indican dónde empieza y termina el texto.
 // No se permiten saltos de línea dentro del texto.
 STRING
-    : '"' ( '\\"' | ~["\r\n] )*? '"'
+    : '"' ( '\\"' | '\\\\' | ~["\r\n\\] )* '"'
     ;
 
 

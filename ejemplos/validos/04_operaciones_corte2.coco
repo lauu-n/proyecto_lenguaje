@@ -1,0 +1,22 @@
+# Ejemplo 4: Nuevas operaciones incorporadas para el Corte II
+# Caso de estudio: ventas con pipeline extendido
+
+ventas = cargar "datos/ventas.csv";
+
+# Pipeline con operaciones avanzadas de transformacion y limpieza
+ventas_procesadas = ventas
+    |> eliminar_duplicados
+    |> eliminar_nulos
+    |> rellenar_nulos precio con 0.0
+    |> convertir unidades a entero
+    |> crear total = unidades * precio
+    |> ordenar por total desc
+    |> renombrar total como total_venta;
+
+# Agrupacion y agregaciones
+resumen_ciudades = ventas_procesadas
+    |> agrupar por [ciudad]
+    |> resumir ingreso_total = suma(total_venta), promedio_precio = media(precio), total_registros = contar();
+
+# Exportacion del resumen a un archivo CSV
+guardar resumen_ciudades como "salidas/resumen_ciudades.csv";
