@@ -1,0 +1,15 @@
+# ================================================================
+# Demostracion 1 - Corte II: Limpieza y Preprocesamiento de Datos
+# ================================================================
+# Carga el dataset original, trata valores nulos, elimina registros
+# duplicados y convierte tipos de datos.
+
+datos_crudos = cargar "datos/ventas.csv";
+
+datos_limpios = datos_crudos
+    |> eliminar_duplicados
+    |> rellenar_nulos precio con 0.0
+    |> eliminar_nulos
+    |> convertir unidades a entero;
+
+guardar datos_limpios como "salidas/datos_limpios.csv";

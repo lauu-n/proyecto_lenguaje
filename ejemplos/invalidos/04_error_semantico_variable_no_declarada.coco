@@ -1,0 +1,10 @@
+# ================================================================
+# Prueba Negativa Semantica 1: Variable no declarada
+# ================================================================
+# El interprete debe detectar que la variable 'variable_inexistente'
+# no existe en memoria y reportar un error semantico claro con linea y columna.
+
+ventas = cargar "datos/ventas.csv";
+
+resultado = ventas
+    |> filtrar donde variable_inexistente > 10;

@@ -1,0 +1,14 @@
+# ================================================================
+# Demostracion 3 - Corte II: Agrupamiento y Estadisticas Agregadas
+# ================================================================
+# Calcula una columna base, agrupa por ciudad, calcula multiples
+# agregaciones estadisticas (suma, media y conteo) y exporta a CSV.
+
+ventas = cargar "datos/ventas.csv";
+
+resumen_ciudades = ventas
+    |> crear total = unidades * precio
+    |> agrupar por [ciudad]
+    |> resumir ingreso_total = suma(total), precio_promedio = media(precio), total_transacciones = contar();
+
+guardar resumen_ciudades como "salidas/resumen_ciudades.csv";

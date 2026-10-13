@@ -1,0 +1,10 @@
+# ================================================================
+# Prueba Negativa Semantica 3: Columna inexistente en tabla
+# ================================================================
+# El interprete debe verificar que la columna exista en la tabla
+# y avisar con un error semantico si la columna no existe.
+
+ventas = cargar "datos/ventas.csv";
+
+resultado = ventas
+    |> seleccionar [columna_que_no_existe];
