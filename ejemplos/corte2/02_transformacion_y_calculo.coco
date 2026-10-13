@@ -1,0 +1,16 @@
+# ================================================================
+# Demostracion 2 - Corte II: Transformacion y Columnas Calculadas
+# ================================================================
+# Selecciona columnas, calcula expresiones aritmeticas (subtotal e IVA),
+# ordena de forma descendente y renombra columnas.
+
+ventas = cargar "datos/ventas.csv";
+
+ventas_calculadas = ventas
+    |> seleccionar [fecha, ciudad, categoria, unidades, precio]
+    |> crear subtotal = unidades * precio
+    |> crear total_con_iva = subtotal * 1.19
+    |> ordenar por total_con_iva desc
+    |> renombrar total_con_iva como total_final;
+
+guardar ventas_calculadas como "salidas/ventas_calculadas.csv";

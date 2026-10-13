@@ -1,0 +1,10 @@
+# ================================================================
+# Prueba Negativa Semantica 2: Division por cero
+# ================================================================
+# El interprete debe detectar la division entre cero en la evaluacion
+# de expresiones y reportar el error con la linea y columna exacta.
+
+precio = 50000;
+divisor = 0;
+
+resultado = precio / divisor;

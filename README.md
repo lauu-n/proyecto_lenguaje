@@ -1,120 +1,114 @@
-# FlujoDatos — DSL para Ciencia de Datos y Visualización
+# Cocosette — DSL para Ciencia de Datos y Visualización
 
 Proyecto de curso — **Lenguajes de Programación y Transducción**
 Universidad Sergio Arboleda — Semestre 2026-2
 Docente: Joaquín F. Sánchez
 
-`FlujoDatos` es un lenguaje de dominio específico (DSL) que permite
+`Cocosette` es un lenguaje de dominio específico (DSL) temático que permite
 describir, con una sintaxis declarativa y encadenada (`|>`), flujos
 reproducibles de carga, preparación, análisis y visualización de datos,
-sin escribir directamente el código Python subyacente. Ese código
-subyacente (Cortes 2 y 3) se implementa desde cero en Python puro: el
-equipo decidió no depender de pandas, NumPy ni Matplotlib aunque el
-enunciado del curso las sugiere como apoyo opcional — ver la
-justificación en [`docs/documento_alcance.md`](docs/documento_alcance.md#2-usuarios-entradas-salidas-y-restricciones).
+sin escribir directamente el código Python subyacente. Todo el motor
+subyacente se implementa desde cero en Python puro, sin librerías externas
+de manipulación de datos o graficación (sin pandas, NumPy ni Matplotlib).
 
-**Caso de estudio elegido: Ventas.** De las opciones sugeridas en el
-enunciado (ventas, movilidad, datos ambientales, educación, salud
-pública, telecomunicaciones), se seleccionó *ventas* por tener la
-menor complejidad léxica: solo requiere literales numéricos, cadenas
-y fechas como texto, sin unidades técnicas, códigos especializados ni
-estructuras geoespaciales. La justificación completa está en
-[`docs/documento_alcance.md`](docs/documento_alcance.md).
+**Caso de estudio elegido: Ventas.** Se seleccionó el dataset de *ventas* por tener la menor complejidad léxica: requiere literales numéricos, cadenas y fechas como texto, sin unidades técnicas especializadas.
 
-## Estado del proyecto: Corte 1 — Especificación y front-end
+---
 
-Esta entrega cubre únicamente el **front-end del lenguaje**:
+## Estado del proyecto y Alcance
 
-- Definición del dominio, usuarios, entradas/salidas y restricciones.
-- Palabras reservadas, operadores, literales y sentencias del Corte 1.
-- Gramática formal en BNF/EBNF.
-- Gramática implementada en ANTLR4 (`grammar/FlujoDatos.g4`).
-- Programas de ejemplo correctos e incorrectos para validar el lexer
-  y el parser (`ejemplos/`).
+Este repositorio implementa y valida la gramática y el front-end del lenguaje:
 
-**No** incluye todavía ejecución semántica (Visitor), columnas
-calculadas, agrupamientos/agregaciones, generación real de gráficas ni
-exportación de archivos — eso corresponde a los Cortes 2 y 3. El
-detalle de qué queda dentro y fuera de alcance está en el documento de
-alcance.
+- **Tokens temáticos de Cocosette:** Prefijados internamente con convención `COCO*` (`COCOCARGAR`, `COCOFILTRAR`, `COCOGRAFICAR`, etc.).
+- **Operaciones de Corte I:**
+  - Asignaciones de variables.
+  - Carga de datasets CSV (`cargar "datos/ventas.csv"`).
+  - Selección de columnas (`seleccionar [col1, col2]`).
+  - Filtros condicionales (`filtrar donde expresion`).
+  - Declaración sintáctica de gráficos (`graficar barras ...`).
+- **Operaciones extendidas de Corte II:**
+  - Creación de columnas calculadas (`crear total = unidades * precio`).
+  - Ordenamiento (`ordenar por columna [asc | desc]`).
+  - Renombrado de columnas (`renombrar col_vieja como col_nueva`).
+  - Limpieza de duplicados (`eliminar_duplicados`).
+  - Tratamiento de nulos (`eliminar_nulos`, `rellenar_nulos col con expr`).
+  - Conversión de tipos (`convertir col a entero | decimal | texto | booleano`).
+  - Agrupamiento y agregaciones (`agrupar por [col] |> resumir ...`).
+  - Exportación de resultados a CSV (`guardar resumen como "salidas/resumen.csv"`).
+- **Validador de sintaxis:** Script `src/validar.py` con `ColectorDeErrores` basado en ANTLR4.
+
+---
 
 ## Estructura del repositorio
 
 ```
-Proyecto_DSL_CienciaDatos/
-├── README.md
-├── requirements.txt
-├── Makefile
-├── .gitignore
+proyecto_coco_actualizado/
+├── README.md                  Documentación general del DSL
+├── requirements.txt           Dependencias (antlr4-python3-runtime)
+├── Makefile                   Automatización de compilación y validación
+├── .gitignore                 Archivos ignorados (artefactos generados de ANTLR)
 ├── grammar/
-│   └── FlujoDatos.g4          Gramática ANTLR4 (lexer + parser)
+│   └── Cocosette.g4           Gramática ANTLR4 (lexer + parser)
 ├── docs/
-│   ├── documento_alcance.md   Documento de instrucciones / alcance del DSL
-│   └── conceptos_antlr.md     Guia de fundamentos de ANTLR (herencia, generacion de codigo)
+│   ├── documento_alcance.md   Especificación formal y alcance del lenguaje
+│   └── conceptos_antlr.md     Guía de fundamentos de ANTLR4
 ├── datos/
-│   └── ventas.csv             Dataset de ejemplo para el caso de estudio
+│   └── ventas.csv             Dataset de prueba
 ├── ejemplos/
-│   ├── validos/                3 programas .flujo sintácticamente correctos
-│   └── invalidos/              3 programas .flujo con errores léxicos/sintácticos
+│   ├── corte2/                Demostraciones oficiales del Corte II
+│   ├── validos/               Programas .coco validos generales
+│   └── invalidos/             Programas .coco con errores lexicos, sintacticos y semanticos
 ├── src/
-│   ├── validar.py              Script que valida .flujo con el parser generado
-│   └── parser/                 Destino del código generado por ANTLR (ver abajo)
-└── salidas/                    Carpeta destino de resultados (Cortes 2-3)
+│   ├── main.py                Punto de entrada principal para ejecutar scripts .coco
+│   ├── visitor.py             Interprete semantico Visitor (evaluacion y transformaciones)
+│   ├── tabla.py               Motor tabular puro en Python (sin pandas/numpy)
+│   ├── memoria_ejecucion.py   Memoria de variables y tabla de simbolos
+│   ├── validar.py             Validador sintactico y lexico
+│   └── parser/                Archivos generados automaticamente por ANTLR
+└── salidas/                   Carpeta para guardar CSVs exportados y graficos
 ```
 
-## Requisitos
+---
 
-- Python 3.11 o superior
-- Java (JDK 11+) y ANTLR 4.13.2, para generar el lexer/parser
-- Paquete `antlr4-python3-runtime` (ver `requirements.txt`)
+## Requisitos y Puesta en Marcha
 
-## Puesta en marcha
+- Python 3.10 o superior
+- Java (JDK 11+) y ANTLR 4.13.2
+- Runtime de ANTLR4:
+  ```bash
+  pip install -r requirements.txt
+  ```
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-### 1. Generar el lexer y el parser en Python
-
-El repositorio incluye la gramática (`.g4`) pero **no** el código que
-ANTLR genera a partir de ella, porque es un artefacto reproducible.
-Genéralo así:
+### 1. Generar el lexer y el parser con ANTLR4
 
 ```bash
 make generar
-# equivalente a:
-# cd grammar && antlr4 -Dlanguage=Python3 -visitor -o ../src/parser FlujoDatos.g4
 ```
+*(Equivale a ejecutar ANTLR4 sobre `grammar/Cocosette.g4` y exportar a `src/parser/`).*
 
-Esto crea `FlujoDatosLexer.py`, `FlujoDatosParser.py`,
-`FlujoDatosVisitor.py` y los archivos `.tokens`/`.interp` dentro de
-`src/parser/`. (Importante: hay que ejecutarlo desde dentro de
-`grammar/`, o ANTLR replica la ruta relativa del `.g4` dentro de la
-salida y termina creando `src/parser/grammar/...` en vez de dejar los
-archivos directamente en `src/parser/`.)
-
-¿Quieres entender exactamente qué genera cada clase y de dónde hereda?
-Ver [`docs/conceptos_antlr.md`](docs/conceptos_antlr.md).
-
-> Si tu entorno de calificación necesita el código ya generado dentro
-> del repositorio, quita las líneas correspondientes de `.gitignore`
-> y haz commit de esos archivos después de ejecutar `make generar`.
-
-### 2. Validar los programas de ejemplo
+### 2. Validar sintácticamente los archivos
 
 ```bash
-make validar
+python3 src/validar.py ejemplos/corte2/*.coco
 ```
 
-Esto ejecuta `src/validar.py` sobre los tres programas válidos y los
-tres inválidos, mostrando el árbol de análisis sintáctico o los
-errores léxicos/sintácticos (con línea y columna) según corresponda.
+### 3. Ejecutar los programas del DSL (Corte II)
 
-## Próximos cortes
+```bash
+# Demostración 1: Limpieza y tratamiento de nulos
+python3 src/main.py ejemplos/corte2/01_limpieza_preprocesamiento.coco
 
-- **Corte 2:** patrón Visitor, tabla de símbolos, columnas calculadas,
-  agrupamientos, agregaciones y estadísticas descriptivas.
-- **Corte 3:** generación real de gráficas, exportación a PNG/CSV,
-  interfaz de línea de comandos y caso de estudio completo.
+# Demostración 2: Columnas calculadas y ordenamiento
+python3 src/main.py ejemplos/corte2/02_transformacion_y_calculo.coco
+
+# Demostración 3: Agrupación, estadísticas y exportación a CSV
+python3 src/main.py ejemplos/corte2/03_agrupacion_y_estadisticas.coco
+```
+
+---
+
+## Estado de Avance por Cortes
+
+- [x] **Corte I (Completado):** Especificación del lenguaje, gramática ANTLR4, lexer, parser y validación sintáctica.
+- [x] **Corte II (Completado):** Intérprete Visitor (`src/visitor.py`), memoria de variables (`src/memoria_ejecucion.py`), motor de datos inmutable en Python puro sin librerías externas (`src/tabla.py`), punto de entrada (`src/main.py`), 3 demostraciones funcionales y pruebas de errores semánticos.
+- [ ] **Corte III:** Renderizado autónomo de gráficos a imagen PNG, CLI interactiva y visualizaciones avanzadas.

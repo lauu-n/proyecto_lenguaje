@@ -1,22 +1,17 @@
-# Documento de alcance — DSL `FlujoDatos`
+# Documento de alcance — DSL `Cocosette`
 
-**Curso:** Lenguajes de Programación y Transducción
-**Proyecto:** Lenguaje de Dominio Específico para Ciencia de Datos y Visualización
-**Corte:** 1 — Especificación y front-end del lenguaje
-**Caso de estudio:** Ventas
+**Curso:** Lenguajes de Programación y Transducción  
+**Proyecto:** Lenguaje de Dominio Específico para Ciencia de Datos y Visualización  
+**Fase:** Corte 1 y Corte 2 (Especificación, front-end y procesamiento de datos)  
+**Caso de estudio:** Ventas  
 
 ---
 
 ## 1. Descripción general y dominio seleccionado
 
-`FlujoDatos` es un DSL declarativo, basado en encadenamiento de
-operaciones (`|>`), para describir flujos reproducibles de carga,
-preparación, análisis y visualización de datos.
+`Cocosette` es un lenguaje de dominio específico (DSL) declarativo, basado en encadenamiento de operaciones (`|>`), diseñado para describir flujos reproducibles de carga, preparación, transformación, análisis y visualización de datos sin escribir directamente código en Python.
 
-El enunciado del proyecto sugiere seis dominios posibles para el caso
-de estudio final: ventas, movilidad, datos ambientales, educación,
-salud pública y telecomunicaciones. Se eligió **ventas** por tener la
-**menor complejidad léxica** de las seis opciones:
+El enunciado del proyecto sugiere seis dominios posibles para el caso de estudio final: ventas, movilidad, datos ambientales, educación, salud pública y telecomunicaciones. Se seleccionó **ventas** por tener la **menor complejidad léxica**:
 
 | Dominio | Por qué se descartó (mayor complejidad léxica) |
 |---|---|
@@ -27,164 +22,117 @@ salud pública y telecomunicaciones. Se eligió **ventas** por tener la
 | Telecomunicaciones | Requiere unidades técnicas compuestas (Mbps, ms de latencia) |
 | **Ventas (elegido)** | Solo usa literales numéricos, cadenas de texto y fechas como texto plano; sin unidades ni notación especializada |
 
-Ventas también coincide con el ejemplo de referencia del enunciado del
-proyecto, lo que facilita mantener continuidad de vocabulario entre lo
-propuesto por el curso y lo implementado por el equipo.
+---
 
 ## 2. Usuarios, entradas, salidas y restricciones
 
-- **Usuarios:** estudiantes o analistas que quieran describir un flujo
-  de análisis de datos de ventas sin escribir directamente el código
-  Python que hace la carga, el filtrado, las agregaciones y las
-  gráficas (código que, en este proyecto, se implementa desde cero,
-  sin pandas/NumPy/Matplotlib — ver restricciones más abajo).
-- **Entradas:** archivos fuente `.flujo` (programas del DSL) y, a
-  partir del Corte 2, archivos CSV de datos reales.
+- **Usuarios:** Estudiantes o analistas que deseen describir un flujo de análisis de datos de ventas de manera compacta y declarativa.
+- **Entradas:** Archivos fuente con extensión `.coco` (programas del DSL) y archivos CSV de datos tabulares (ej. `datos/ventas.csv`).
 - **Salidas:**
-  - En este Corte 1: árbol de análisis sintáctico y reporte de errores
-    léxicos/sintácticos con línea y columna.
-  - En cortes futuros (fuera de alcance aquí): tablas transformadas,
-    estadísticas, archivos CSV exportados e imágenes PNG de gráficas.
-- **Restricciones de diseño** (justificadas en la sección 8):
-  - Los identificadores solo admiten letras ASCII, dígitos y guion
-    bajo (sin tildes ni "ñ"); se recomienda escribir `anio` en vez de
-    `año`.
-  - `x` y `y` son palabras reservadas (usadas en `graficar`) y no
-    pueden usarse como nombre de columna o variable.
-  - Las cadenas de texto no admiten saltos de línea internos.
-  - Cada sentencia termina explícitamente en `;`.
-  - **Sin bibliotecas de terceros para datos ni graficación.** El
-    enunciado del curso sugiere pandas, NumPy y Matplotlib como apoyo
-    opcional (ver requisitos técnicos del enunciado). Este equipo
-    decide no usarlas: el motor de ejecución de los Cortes 2 y 3
-    (lectura/escritura de CSV, filtrado, agregaciones, estadísticas
-    descriptivas y generación de gráficas) se implementa con código
-    propio sobre Python puro. Sí se permiten módulos de la librería
-    estándar de Python (por ejemplo `csv`, `math`, `statistics`),
-    porque son parte del lenguaje, no bibliotecas de ciencia de datos
-    ya construidas para este dominio. `antlr4-python3-runtime` queda
-    fuera de esta restricción porque el uso de ANTLR4 es un requisito
-    técnico obligatorio del enunciado (sección 7), no una biblioteca
-    opcional de apoyo.
+  - Árbol de análisis sintáctico y diagnósticos de error con número de línea y columna.
+  - Tablas procesadas en memoria, resúmenes estadísticos y exportación de archivos CSV a la carpeta `salidas/`.
+- **Restricciones de diseño:**
+  - Los identificadores solo admiten caracteres ASCII (`a-z`, `A-Z`, dígitos y `_`), sin tildes ni "ñ".
+  - `x` y `y` son palabras reservadas (ejes de gráficos) y no pueden usarse como identificadores sueltos.
+  - Las cadenas de texto no admiten saltos de línea sin cerrar.
+  - Cada sentencia termina obligatoriamente en punto y coma (`;`).
+  - **Sin librerías externas de análisis o graficación (sin pandas, NumPy ni Matplotlib):** El motor de datos (`Tabla`) y la memoria de ejecución (`MemoriaEjecucion`) se implementan desde cero en Python puro utilizando únicamente la biblioteca estándar (`csv`, `math`). El paquete `antlr4-python3-runtime` se utiliza únicamente para el lexer/parser por requisito de la asignatura.
 
-## 3. Alcance de esta entrega (Corte 1)
+---
 
-**Incluido:**
+## 3. Catálogo de Palabras Reservadas y Tokens
 
-- Delimitación del dominio y casos de uso (ventas).
-- Diseño de palabras reservadas, operadores, literales y sentencias.
-- Gramática formal en BNF/EBNF (sección 6).
-- Gramática implementada en ANTLR4 (`grammar/FlujoDatos.g4`).
-- Instrucciones para generar el lexer y el parser en Python.
-- Reconocimiento sintáctico de: asignaciones, expresiones
-  aritmético-lógicas, carga de CSV, selección de columnas, filtros con
-  comparaciones simples y una instrucción de visualización.
-- Programas de ejemplo correctos e incorrectos (`ejemplos/`) que
-  validan el lexer y el parser.
+El lenguaje utiliza una convención interna de tokens temáticos con el prefijo `COCO*`, manteniendo palabras clave en español legibles para el usuario:
 
-**Fuera de alcance (planeado para cortes siguientes):**
-
-- Corte 2: patrón Visitor, tabla de símbolos, columnas calculadas,
-  agrupamiento, agregaciones, tratamiento de valores faltantes,
-  escritura de resultados en CSV.
-- Corte 3: generación real de las gráficas y exportación a PNG,
-  interfaz de línea de comandos completa, caso de estudio final con
-  datos reales.
-
-En particular, aunque la gramática ya reconoce la sintaxis completa de
-`graficar` (incluyendo los cinco tipos de gráfica), **no se produce
-ninguna gráfica en este corte**: solo se valida que la instrucción esté
-bien escrita.
-
-## 4. Palabras reservadas
-
-| Palabra | Uso |
-|---|---|
-| `cargar` | Cargar un archivo CSV |
-| `seleccionar` | Seleccionar columnas dentro de un pipeline |
-| `filtrar` | Filtrar filas dentro de un pipeline |
-| `donde` | Introduce la condición de un filtro |
-| `graficar` | Inicia una instrucción de visualización |
-| `titulo` | Título opcional de una gráfica |
-| `guardar` | Introduce la ruta de exportación de una gráfica |
-| `como` | Acompaña a `guardar` |
-| `barras`, `lineas`, `histograma`, `dispersion`, `caja` | Tipos de gráfica |
-| `x`, `y` | Ejes de una gráfica |
-| `verdadero`, `falso` | Literales booleanos |
-
-Son 17 palabras reservadas en total: un vocabulario deliberadamente
-pequeño para mantener baja la complejidad léxica del reconocedor.
-
-## 5. Operadores, literales y tipos de datos
-
-**Operadores aritméticos:** `+` `-` `*` `/` `%` `^`
-**Operadores relacionales:** `<` `<=` `>` `>=` `==` `!=`
-**Operadores lógicos:** `&&` `||` `!`
-**Otros símbolos:** `=` (asignación), `|>` (pipeline), `( )` (agrupación),
-`[ ]` (lista de columnas), `,` `;`
-
-**Literales y tipos:**
-
-| Tipo | Ejemplo | Descripción |
+| Palabra en el DSL | Token interno | Uso |
 |---|---|---|
-| Entero (`INT`) | `120` | Secuencia de dígitos |
-| Decimal (`FLOAT`) | `0.15` | Dígitos, punto, dígitos |
-| Cadena (`STRING`) | `"datos/ventas.csv"` | Entre comillas dobles, sin salto de línea |
-| Booleano (`BOOLEANO`) | `verdadero`, `falso` | Palabras reservadas |
+| `cargar` | `COCOCARGAR` | Cargar un archivo CSV |
+| `seleccionar` | `COCOSELECCIONAR` | Proyección de columnas dentro de un pipeline |
+| `filtrar` | `COCOFILTRAR` | Filtrado de filas condicional |
+| `donde` | `COCODONDE` | Introduce la condición lógica de un filtro |
+| `crear` | `COCOCREAR` | Creación de columnas calculadas (Corte 2) |
+| `ordenar` | `COCOORDENAR` | Ordenamiento de registros (Corte 2) |
+| `por` | `COCOPOR` | Cláusula para ordenar o agrupar |
+| `asc`, `ascendente` | `COCOASC` | Orden ascendente |
+| `desc`, `descendente` | `COCODESC` | Orden descendente |
+| `renombrar` | `COCORENOMBRAR` | Renombrar una columna existente (Corte 2) |
+| `eliminar_duplicados` | `COCOELIMINARDUP` | Eliminación de filas repetidas (Corte 2) |
+| `eliminar_nulos` | `COCOELIMINARNULL` | Descarte de filas con campos vacíos (Corte 2) |
+| `rellenar_nulos` | `COCORELLENARNULL` | Reemplazo de nulos por un valor (Corte 2) |
+| `con` | `COCOCON` | Acompaña a `rellenar_nulos` |
+| `convertir` | `COCOCONVERTIR` | Casteo de tipo de columna (Corte 2) |
+| `a` | `COCOA` | Acompaña a `convertir` |
+| `entero`, `decimal`, `texto`, `booleano` | `COCOENTERO`, etc. | Tipos de datos destino para conversión |
+| `agrupar` | `COCOAGRUPAR` | Agrupamiento por categorías (Corte 2) |
+| `resumir` | `COCORESUMIR` | Cálculo de agregaciones sobre grupos (Corte 2) |
+| `suma`, `media`, `mediana`, `minimo`, `maximo`, `desviacion_estandar`, `contar` | `COCOSUMA`, etc. | Funciones de agregación estadística (Corte 2) |
+| `guardar` | `COCOGUARDAR` | Exportación de resultados a CSV o imagen de gráfica |
+| `como` | `COMO` | Acompaña a `guardar` |
+| `graficar` | `COCOGRAFICAR` | Declaración de visualización (Corte 3) |
+| `barras`, `lineas`, `histograma`, `dispersion`, `caja` | `COCOBARRAS`, etc. | Tipos de gráficos admitidos |
+| `x`, `y` | `EJE_X`, `EJE_Y` | Especificación de ejes para gráficos |
+| `titulo` | `COCOTITULO` | Título opcional de gráficos |
+| `verdadero`, `falso` | `COCOBOOLEANO` | Literales lógicos |
 
-Los identificadores (`ID`) representan nombres de variables o de
-columnas: deben iniciar con una letra o guion bajo, seguidos de
-letras, dígitos o guion bajo.
+---
 
-## 6. Sentencias soportadas en el Corte 1
+## 4. Operadores, Precedencia y Asociatividad
 
-```
-# Asignación simple con expresión
-descuento = 0.15;
+1. `( - , ! )` — Unarios prefijos (mayor precedencia, agrupan a la derecha).
+2. `^` — Potencia (asociatividad a la derecha).
+3. `* , / , %` — Multiplicativos (asociatividad a la izquierda).
+4. `+ , -` — Aditivos (asociatividad a la izquierda).
+5. `< , <= , > , >=` — Relacionales.
+6. `== , !=` — Igualdad.
+7. `&&` — Conjunción lógica (AND).
+8. `||` — Disyunción lógica (OR, menor precedencia).
 
-# Carga de un archivo CSV
-ventas = cargar "datos/ventas.csv";
+---
 
-# Pipeline de selección y filtrado
-ventas_filtradas = ventas
-    |> seleccionar [fecha, ciudad, categoria, unidades, precio]
-    |> filtrar donde unidades > 0 && precio > 0;
-
-# Reconocimiento sintáctico de una visualización (no se genera aún)
-graficar barras resumen
-    x ciudad
-    y precio
-    titulo "Precio por ciudad"
-    guardar como "salidas/precio_ciudad.png";
-```
-
-## 7. Gramática formal (BNF/EBNF)
-
-La siguiente gramática EBNF describe el alcance del Corte 1. En la
-implementación ANTLR4 (`grammar/FlujoDatos.g4`) la jerarquía de
-expresiones se escribe de forma left-recursive, que ANTLR4 reescribe
-internamente de forma equivalente a la mostrada aquí.
+## 5. Gramática Formal (EBNF)
 
 ```ebnf
-programa          ::= { sentencia } ;
-sentencia         ::= asignacion ";" | sentenciaGraficar ";" ;
+programa          ::= sentencia { sentencia } EOF ;
+sentencia         ::= asignacion ";" | cocoGraficar ";" | cocoGuardarCSV ";" ;
 
-asignacion        ::= IDENTIFICADOR "=" fuenteDatos ;
-fuenteDatos       ::= cargaCSV | pipeline | expresion ;
+asignacion        ::= IDENTIFICADOR "=" cocoFuente ;
+cocoFuente        ::= cargaCSV | IDENTIFICADOR ( "|>" operacion )+ | expresion ;
 cargaCSV          ::= "cargar" CADENA ;
-pipeline          ::= IDENTIFICADOR operacion { operacion } ;   (* al menos una *)
-operacion         ::= "|>" ( seleccionOp | filtroOp ) ;
-seleccionOp       ::= "seleccionar" "[" listaColumnas "]" ;
-filtroOp          ::= "filtrar" "donde" expresion ;
+cocoGuardarCSV    ::= "guardar" IDENTIFICADOR "como" CADENA ;
+
+operacion         ::= cocoSeleccion
+                    | cocoFiltro
+                    | cocoCrear
+                    | cocoOrdenar
+                    | cocoRenombrar
+                    | cocoEliminarDuplicados
+                    | cocoTratarNulos
+                    | cocoConvertir
+                    | cocoAgrupar
+                    | cocoResumir ;
+
+cocoSeleccion     ::= "seleccionar" "[" listaColumnas "]" ;
+cocoFiltro        ::= "filtrar" "donde" expresion ;
+cocoCrear         ::= "crear" IDENTIFICADOR "=" expresion ;
+cocoOrdenar       ::= "ordenar" "por" IDENTIFICADOR [ "asc" | "desc" | "ascendente" | "descendente" ] ;
+cocoRenombrar     ::= "renombrar" IDENTIFICADOR "como" IDENTIFICADOR ;
+cocoEliminarDuplicados ::= "eliminar_duplicados" ;
+cocoTratarNulos   ::= "eliminar_nulos" | "rellenar_nulos" IDENTIFICADOR "con" expresion ;
+cocoConvertir     ::= "convertir" IDENTIFICADOR "a" tipoDato ;
+tipoDato          ::= "entero" | "decimal" | "texto" | "booleano" ;
+cocoAgrupar       ::= "agrupar" "por" "[" listaColumnas "]" ;
+cocoResumir       ::= "resumir" asignacionAgregada { "," asignacionAgregada } ;
+asignacionAgregada::= IDENTIFICADOR "=" funcionAgregacion "(" [ IDENTIFICADOR ] ")" ;
+funcionAgregacion ::= "suma" | "media" | "mediana" | "minimo" | "maximo" | "desviacion_estandar" | "contar" ;
+
 listaColumnas     ::= IDENTIFICADOR { "," IDENTIFICADOR } ;
 
-sentenciaGraficar ::= "graficar" tipoGrafica IDENTIFICADOR
-                       "x" IDENTIFICADOR
-                       "y" IDENTIFICADOR
-                       [ "titulo" CADENA ]
-                       [ "guardar" "como" CADENA ] ;
-tipoGrafica       ::= "barras" | "lineas" | "histograma"
-                     | "dispersion" | "caja" ;
+cocoGraficar      ::= "graficar" tipoGrafica IDENTIFICADOR
+                        "x" IDENTIFICADOR
+                        "y" IDENTIFICADOR
+                        [ "titulo" CADENA ]
+                        [ "guardar" "como" CADENA ] ;
+tipoGrafica       ::= "barras" | "lineas" | "histograma" | "dispersion" | "caja" ;
 
 expresion         ::= expOr ;
 expOr             ::= expAnd { "||" expAnd } ;
@@ -192,120 +140,20 @@ expAnd            ::= expIgualdad { "&&" expIgualdad } ;
 expIgualdad       ::= expRelacional { ( "==" | "!=" ) expRelacional } ;
 expRelacional     ::= expAditiva { ( "<" | "<=" | ">" | ">=" ) expAditiva } ;
 expAditiva        ::= expMultiplicativa { ( "+" | "-" ) expMultiplicativa } ;
-expMultiplicativa ::= expUnaria { ( "*" | "/" | "%" ) expUnaria } ;
-expUnaria         ::= ( "-" | "!" ) expUnaria | expPotencia ;
-expPotencia       ::= expPrimaria [ "^" expUnaria ] ;   (* asociativo a la derecha *)
+expMultiplicativa ::= expPotencia { ( "*" | "/" | "%" ) expPotencia } ;
+expPotencia       ::= expUnaria [ "^" expPotencia ] ;
+expUnaria         ::= ( "-" | "!" ) expUnaria | expPrimaria ;
 expPrimaria       ::= literal | IDENTIFICADOR | "(" expresion ")" ;
 
 literal           ::= ENTERO | DECIMAL | CADENA | BOOLEANO ;
 BOOLEANO          ::= "verdadero" | "falso" ;
-
-IDENTIFICADOR     ::= LETRA { LETRA | DIGITO | "_" } ;
-LETRA             ::= "a".."z" | "A".."Z" | "_" ;
-DIGITO            ::= "0".."9" ;
-ENTERO            ::= DIGITO { DIGITO } ;
-DECIMAL           ::= DIGITO { DIGITO } "." DIGITO { DIGITO } ;
-CADENA            ::= '"' { caracter_escapado | cualquier_caracter_excepto('"', '\n') } '"' ;
-COMENTARIO        ::= "#" { cualquier_caracter_excepto('\n') } ;  (* se descarta *)
 ```
 
-## 8. Precedencia y asociatividad de operadores
+---
 
-De mayor a menor precedencia:
+## 6. Manejo de Errores
 
-1. `- !` (unarios, prefijos)
-2. `^` (potencia, asociativo a la derecha)
-3. `* / %`
-4. `+ -`
-5. `< <= > >=`
-6. `== !=`
-7. `&&`
-8. `||`
-
-## 9. Manejo de errores (Corte 1)
-
-El front-end distingue dos niveles de error, ambos reportados con
-línea y columna mediante un `ErrorListener` propio
-(`src/validar.py`):
-
-- **Léxico:** un carácter o secuencia no reconocida por ninguna regla
-  del lexer (por ejemplo, una cadena sin comilla de cierre).
-- **Sintáctico:** una secuencia de tokens válidos individualmente pero
-  que no respeta ninguna producción de la gramática (por ejemplo, una
-  sentencia sin `;`, o el uso de `x`/`y` como identificador).
-
-El manejo semántico (variables no declaradas, columnas inexistentes,
-tipos incompatibles) queda para el Corte 2, cuando exista una tabla de
-símbolos.
-
-## 10. Ejemplos de programas válidos e inválidos
-
-Ver la carpeta [`ejemplos/`](../ejemplos):
-
-- `ejemplos/validos/01_carga_y_pipeline.flujo` — carga y pipeline de
-  selección/filtrado.
-- `ejemplos/validos/02_expresiones_basicas.flujo` — asignaciones y
-  expresiones aritmético-lógicas.
-- `ejemplos/validos/03_visualizacion.flujo` — reconocimiento sintáctico
-  de dos instrucciones `graficar`, con y sin cláusulas opcionales.
-- `ejemplos/invalidos/01_error_lexico_cadena_sin_cerrar.flujo` — error
-  léxico (cadena sin cerrar).
-- `ejemplos/invalidos/02_error_sintactico_falta_punto_coma.flujo` —
-  error sintáctico (falta `;`).
-- `ejemplos/invalidos/03_error_palabra_reservada_como_identificador.flujo`
-  — error sintáctico (uso de `x`/`y` como identificador).
-
-## 11. Decisiones de diseño y justificación
-
-- **`;` como terminador explícito de sentencia**, en vez de depender
-  de saltos de línea significativos (como en el ejemplo ilustrativo
-  del enunciado): evita construir un lexer sensible a indentación o a
-  la posición del salto de línea, reduciendo la complejidad léxica del
-  reconocedor sin perder legibilidad, ya que el operador `|>` sigue
-  permitiendo partir un pipeline en varias líneas.
-- **Operadores lógicos simbólicos (`&&`, `||`, `!`)** en vez de
-  palabras como "y"/"o": evita la ambigüedad con las palabras
-  reservadas `x`/`y` usadas como ejes en `graficar`, y mantiene el
-  conjunto de palabras reservadas más pequeño.
-- **Identificadores solo ASCII**: simplifica la regla léxica de
-  identificador (no requiere tratar rangos Unicode) a cambio de pedir
-  nombres de columna sin tildes, una restricción menor y documentada.
-- **Reconocimiento sintáctico completo de `graficar`** (los cinco
-  tipos de gráfica y sus cláusulas opcionales) aunque el corte actual
-  no lo ejecute: permite reutilizar la misma gramática sin cambios
-  cuando en el Corte 3 se implemente la generación real de las
-  gráficas.
-- **Reglas con alternativas etiquetadas** (`fuenteCarga`,
-  `fuentePipeline`, `fuenteExpresion`, y las etiquetas de `expresion`):
-  no aportan nada en el Corte 1, pero facilitan escribir el Visitor en
-  el Corte 2 sin reestructurar la gramática.
-- **Motor de datos y graficación en Python puro, sin pandas, NumPy ni
-  Matplotlib**: aunque el enunciado las ofrece como apoyo opcional, el
-  equipo prefiere implementar a mano la representación de tablas, las
-  agregaciones, las estadísticas descriptivas y el dibujo de las
-  gráficas. No cambia el alcance funcional del DSL (las mismas
-  operaciones descritas en la tabla de la sección 2 del enunciado
-  siguen siendo la meta), pero sí cambia el diseño interno de los
-  Cortes 2 y 3 y mantiene `requirements.txt` limitado a
-  `antlr4-python3-runtime`.
-
-## 12. Plan para los próximos cortes
-
-- **Corte 2:** implementar el Visitor sobre el árbol ya generado,
-  diseñar la tabla de símbolos, y extender la gramática (de forma
-  incremental, sin romper lo ya construido) con columnas calculadas
-  (`crear`), agrupamiento (`agrupar por`) y agregaciones (`resumir`).
-- **Corte 3:** implementar `graficar` con código propio (sin
-  Matplotlib) que dibuje directamente los cinco tipos de gráfica sobre
-  los datos ya agregados y exporte el resultado a PNG, exportar
-  resultados a CSV, construir la interfaz de línea de comandos y
-  desarrollar el caso de estudio completo con el dataset de ventas.
-
-## 13. Ver también
-
-[`docs/conceptos_antlr.md`](conceptos_antlr.md) explica, con más
-detalle del que cabe aquí, cómo `grammar/FlujoDatos.g4` se convierte
-en código Python (qué genera el comando `antlr4`, de qué clases hereda
-cada pieza generada) y cómo encajan entre sí `grammar/FlujoDatos.g4`,
-`src/parser/` y `src/validar.py`. Es la referencia recomendada para
-repasar los fundamentos de ANTLR usados en este corte.
+El DSL implementa detección y reporte en tres capas:
+1. **Léxico:** Caracteres desconocidos o cadenas no terminadas (`ColectorDeErrores` en `src/validar.py`).
+2. **Sintáctico:** Estructura inválida, falta de punto y coma o uso de palabras reservadas como variables.
+3. **Semántico (Corte 2):** Variables no declaradas (`MemoriaEjecucion`), columnas inexistentes en la tabla (`Tabla._validar_columnas`) o incompatibilidad de tipos en operaciones.
