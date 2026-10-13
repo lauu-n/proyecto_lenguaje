@@ -23,9 +23,8 @@ def ejecutar_archivo(ruta_archivo):
     if not os.path.exists(ruta_archivo):
         raise FileNotFoundError(f"No se encontro el archivo: '{ruta_archivo}'")
 
-    print("\n========================================================")
-    print(f"  Ejecutando Cocosette: {ruta_archivo}")
-    print("========================================================")
+    print(f"\nEjecutando {ruta_archivo}")
+    print("Linea de ejecucion:")
 
     # 1. Leer el archivo con codigo fuente
     with open(ruta_archivo, "r", encoding="utf-8") as f:
