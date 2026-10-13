@@ -4,13 +4,20 @@ Este script toma uno o mas archivos .coco y reporta si cada uno es
 lexica y sintacticamente valido segun la gramatica grammar/Cocosette.g4.
 """
 
+import os
 import sys
-from pathlib import Path
+
+# Verificacion de sistema operativo: Linux
+if os.name != "posix":
+    print("Error: Este script fue disenado exclusivamente para ejecutarse en Linux.")
+    sys.exit(1)
+
+sys.path.append("src/parser")
+sys.path.append("src")
+sys.path.append("parser")
 
 from antlr4 import CommonTokenStream, FileStream
 from antlr4.error.ErrorListener import ErrorListener
-
-sys.path.append(str(Path(__file__).resolve().parent / "parser"))
 
 try:
     from CocosetteLexer import CocosetteLexer
