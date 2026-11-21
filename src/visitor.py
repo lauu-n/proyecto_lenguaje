@@ -472,12 +472,6 @@ class InterpreteVisitor(CocosetteVisitor):
         valor_calculado = self.visit(ctx.cocoFuente())
 
         self.memoria.guardar(nombre_variable, valor_calculado)
-
-        if isinstance(valor_calculado, Tabla):
-            print(f"[Asignacion] '{nombre_variable}' -> Tabla ({len(valor_calculado.filas)} filas, columnas: {valor_calculado.columnas})")
-        else:
-            print(f"[Asignacion] '{nombre_variable}' = {valor_calculado}")
-
         return valor_calculado
 
     def visitCocoImprimir(self, ctx):

@@ -23,12 +23,13 @@ def ejecutar_archivo(ruta_archivo):
     if not os.path.exists(ruta_archivo):
         raise FileNotFoundError(f"No se encontro el archivo: '{ruta_archivo}'")
 
-    print(f"\nEjecutando {ruta_archivo}")
-    print("Linea de ejecucion:")
-
     # 1. Leer el archivo con codigo fuente
     with open(ruta_archivo, "r", encoding="utf-8") as f:
         codigo_fuente = f.read()
+
+    # Imprimir el codigo fuente tal cual y los 3 guiones separadores
+    print(codigo_fuente.strip())
+    print("---")
 
     # 2. Analisis lexico y sintactico con ANTLR
     flujo_entrada = InputStream(codigo_fuente)
@@ -39,11 +40,10 @@ def ejecutar_archivo(ruta_archivo):
 
     # 3. Ejecucion semantica con el Visitor
     visitor = InterpreteVisitor()
-    memoria_final = visitor.visitPrograma(arbol)
+    visitor.visitPrograma(arbol)
 
-    print("\n[Exito] Ejecucion finalizada correctamente.")
-    print(memoria_final)
-    return memoria_final
+    print("\nEjecucion exitosa.")
+    return visitor.memoria
 
 
 def main():
@@ -56,7 +56,7 @@ def main():
     try:
         ejecutar_archivo(ruta_archivo)
     except Exception as error:
-        print(f"\n[ERROR EN LA EJECUCION]: {error}")
+        print(f"\nError en la ejecucion: {error}")
         sys.exit(1)
 
 

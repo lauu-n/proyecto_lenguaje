@@ -10,7 +10,6 @@ res_modulo = 17 % 5;
 res_potencia = 2 ^ 8;
 
 # 2. Impresion directa de resultados
-imprimir "=== PRUEBAS DE ARITMETICA ===";
 imprimir res_suma;
 imprimir res_resta;
 imprimir res_multiplicacion;
