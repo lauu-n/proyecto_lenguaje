@@ -60,6 +60,7 @@ sentencia
     | cocoGraficar ';'
     | cocoGuardarCSV ';'
     | cocoImprimir ';'
+    | cocoMientras ';'?
     | expresion ';'
     ;
 
@@ -143,6 +144,18 @@ cocoGuardarCSV
 // mostrar 5 + 3;   o  mostrar(5 + 3);
 cocoImprimir
     : COCOIMPRIMIR ( '(' expresion ')' | expresion )
+    ;
+
+
+// -------------------------
+// REGLA: cocoMientras
+// -------------------------
+// Bucle iterativo de control de flujo.
+// Repite el bloque de sentencias mientras la expresion sea verdadera.
+// Soporta sintaxis con o sin parentesis en la condicion:
+// mientras (x < 10) { ... }  o  while x < 10 { ... }
+cocoMientras
+    : COCOMIENTRAS '('? expresion ')'? '{' sentencia* '}'
     ;
 
 
@@ -479,6 +492,7 @@ COCOGRAFICAR      : 'graficar';
 COCOTITULO        : 'titulo';
 COCOGUARDAR       : 'guardar';
 COCOIMPRIMIR      : 'imprimir' | 'mostrar';
+COCOMIENTRAS      : 'mientras' | 'while';
 COMO              : 'como';
 COCOBARRAS        : 'barras';
 COCOLINEAS        : 'lineas';

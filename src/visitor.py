@@ -483,6 +483,13 @@ class InterpreteVisitor(CocosetteVisitor):
             print(valor)
         return valor
 
+    def visitCocoMientras(self, ctx):
+        """Ejecuta un bucle mientras la expresion condicion sea verdadera."""
+        while bool(self.visit(ctx.expresion())):
+            for nodo_sentencia in ctx.sentencia():
+                self.visitSentencia(nodo_sentencia)
+        return None
+
     def visitSentencia(self, ctx):
         """Ejecuta una sola sentencia (asignacion, guardar, graficar, imprimir o expresion)."""
         if ctx.asignacion() is not None:
@@ -493,6 +500,8 @@ class InterpreteVisitor(CocosetteVisitor):
             return self.visitCocoGraficar(ctx.cocoGraficar())
         elif ctx.cocoImprimir() is not None:
             return self.visitCocoImprimir(ctx.cocoImprimir())
+        elif ctx.cocoMientras() is not None:
+            return self.visitCocoMientras(ctx.cocoMientras())
         elif ctx.expresion() is not None:
             return self.visit(ctx.expresion())
         return None
