@@ -70,7 +70,20 @@ def convertir_texto_a_valor_literal(texto_crudo):
 
 
 # ====================================================================
-# 2. CLASE INTERPRETE VISITOR (HEREDA DE COCOSSETTEVISITOR)
+# 2. SEÑAL DE CONTROL DE FLUJO PARA RETORNO DE FUNCIONES
+# ====================================================================
+
+
+class RetornoSignal(Exception):
+    """Senal de flujo para retornar un valor desde el cuerpo de una funcion."""
+
+    def __init__(self, valor):
+        super().__init__()
+        self.valor = valor
+
+
+# ====================================================================
+# 3. CLASE INTERPRETE VISITOR (HEREDA DE COCOSSETTEVISITOR)
 # ====================================================================
 
 
@@ -84,6 +97,9 @@ class InterpreteVisitor(CocosetteVisitor):
             self.memoria = memoria
         else:
             self.memoria = MemoriaEjecucion()
+
+        # Diccionario donde se guardan las funciones definidas por el usuario
+        self.funciones = {}
 
         # Fila que se esta evaluando actualmente (para saber el valor de las columnas)
         self.fila_actual = None
@@ -116,6 +132,10 @@ class InterpreteVisitor(CocosetteVisitor):
         linea = ctx.start.line
         columna = ctx.start.column
         return self.memoria.obtener(nombre, linea=linea, columna=columna)
+
+    def visitExpLlamada(self, ctx):
+        """Evalua la llamada a una funcion dentro de una expresion matematica o logica."""
+        return self.visitLlamadaFuncion(ctx.llamadaFuncion())
 
     # ----------------------------------------------------------------
     # B. OPERACIONES MATEMATICAS Y LOGICAS
@@ -490,8 +510,74 @@ class InterpreteVisitor(CocosetteVisitor):
                 self.visitSentencia(nodo_sentencia)
         return None
 
+    def visitCocoDefFuncion(self, ctx):
+        """Guarda la declaracion de una funcion (receta) en el diccionario de funciones."""
+        nombre_func = ctx.ID().getText()
+        params = []
+        if ctx.listaParams() is not None:
+            params = [nodo_id.getText() for nodo_id in ctx.listaParams().ID()]
+
+        self.funciones[nombre_func] = {
+            "params": params,
+            "cuerpo": ctx.sentencia()
+        }
+        return None
+
+    def visitCocoRetornar(self, ctx):
+        """Lanza la senal de retorno con el valor evaluado de la expresion."""
+        if ctx.expresion() is not None:
+            valor = self.visit(ctx.expresion())
+        else:
+            valor = None
+        raise RetornoSignal(valor)
+
+    def visitLlamadaFuncion(self, ctx):
+        """Ejecuta la llamada a una funcion con argumentos y ambito local."""
+        nombre_func = ctx.ID().getText()
+        linea = ctx.start.line
+        columna = ctx.start.column
+
+        if nombre_func not in self.funciones:
+            raise NameError(
+                f"Error semantico (linea {linea}, columna {columna}): la funcion '{nombre_func}' no ha sido definida."
+            )
+
+        receta = self.funciones[nombre_func]
+        nombres_params = receta["params"]
+        cuerpo = receta["cuerpo"]
+
+        valores_args = []
+        if ctx.listaArgumentos() is not None:
+            for exp in ctx.listaArgumentos().expresion():
+                valores_args.append(self.visit(exp))
+
+        if len(valores_args) != len(nombres_params):
+            raise TypeError(
+                f"Error semantico (linea {linea}, columna {columna}): la funcion '{nombre_func}' "
+                f"espera {len(nombres_params)} argumento(s), pero se pasaron {len(valores_args)}."
+            )
+
+        memoria_previa = self.memoria
+        memoria_local = MemoriaEjecucion(padre=memoria_previa)
+
+        for param, val in zip(nombres_params, valores_args):
+            memoria_local.guardar(param, val)
+
+        self.memoria = memoria_local
+        resultado = None
+
+        try:
+            for nodo_sentencia in cuerpo:
+                self.visitSentencia(nodo_sentencia)
+        except RetornoSignal as senal:
+            resultado = senal.valor
+        finally:
+            self.memoria = memoria_previa
+
+        return resultado
+
     def visitSentencia(self, ctx):
-        """Ejecuta una sola sentencia (asignacion, guardar, graficar, imprimir o expresion)."""
+        """Ejecuta una sola sentencia (asignacion, guardar, graficar, imprimir, funcion o expresion)."""
         if ctx.asignacion() is not None:
             return self.visitAsignacion(ctx.asignacion())
         elif ctx.cocoGuardarCSV() is not None:
@@ -500,6 +586,10 @@ class InterpreteVisitor(CocosetteVisitor):
             return self.visitCocoGraficar(ctx.cocoGraficar())
         elif ctx.cocoImprimir() is not None:
             return self.visitCocoImprimir(ctx.cocoImprimir())
+        elif ctx.cocoDefFuncion() is not None:
+            return self.visitCocoDefFuncion(ctx.cocoDefFuncion())
+        elif ctx.cocoRetornar() is not None:
+            return self.visitCocoRetornar(ctx.cocoRetornar())
         elif ctx.cocoMientras() is not None:
             return self.visitCocoMientras(ctx.cocoMientras())
         elif ctx.expresion() is not None:

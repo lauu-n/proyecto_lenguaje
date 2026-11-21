@@ -60,6 +60,8 @@ sentencia
     | cocoGraficar ';'
     | cocoGuardarCSV ';'
     | cocoImprimir ';'
+    | cocoDefFuncion ';'?
+    | cocoRetornar
     | cocoMientras ';'?
     | expresion ';'
     ;
@@ -156,6 +158,45 @@ cocoImprimir
 // mientras (x < 10) { ... }  o  while x < 10 { ... }
 cocoMientras
     : COCOMIENTRAS '('? expresion ')'? '{' sentencia* '}'
+    ;
+
+
+// -------------------------
+// REGLA: cocoDefFuncion
+// -------------------------
+// Definicion de funciones reutilizables con parametros.
+// Ejemplo:
+// funcion sumar(a, b) {
+//     retornar a + b;
+// }
+cocoDefFuncion
+    : COCOFUNCION ID '(' listaParams? ')' '{' sentencia* '}'
+    ;
+
+listaParams
+    : ID ( ',' ID )*
+    ;
+
+// -------------------------
+// REGLA: cocoRetornar
+// -------------------------
+// Retorna un valor desde una funcion.
+// Ejemplo: retornar a + b;  o  retornar;
+cocoRetornar
+    : COCORETORNAR expresion? ';'
+    ;
+
+// -------------------------
+// REGLA: llamadaFuncion
+// -------------------------
+// Invoca una funcion pasando argumentos.
+// Ejemplo: sumar(10, 20)
+llamadaFuncion
+    : ID '(' listaArgumentos? ')'
+    ;
+
+listaArgumentos
+    : expresion ( ',' expresion )*
     ;
 
 
@@ -433,6 +474,7 @@ expresion
     | expresion '&&' expresion                          # expAnd
     | expresion '||' expresion                          # expOr
     | '(' expresion ')'                                 # expParentesis
+    | llamadaFuncion                                    # expLlamada
     | literal                                           # expLiteral
     | ID                                                 # expIdentificador
     ;
@@ -493,6 +535,8 @@ COCOTITULO        : 'titulo';
 COCOGUARDAR       : 'guardar';
 COCOIMPRIMIR      : 'imprimir' | 'mostrar';
 COCOMIENTRAS      : 'mientras' | 'while';
+COCOFUNCION       : 'funcion' | 'def' | 'fn';
+COCORETORNAR      : 'retornar' | 'return';
 COMO              : 'como';
 COCOBARRAS        : 'barras';
 COCOLINEAS        : 'lineas';

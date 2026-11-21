@@ -1,0 +1,24 @@
+# ====================================================================
+# EJEMPLO 07: DEFINICION Y USO DE FUNCIONES REUTILIZABLES EN COCOSETTE
+# ====================================================================
+
+# 1. Definicion de una funcion simple que calcula el doble de un numero
+funcion duplicar(numero) {
+    retornar numero * 2;
+}
+
+# 2. Definicion de una funcion con multiples parametros y calculo interno
+funcion calcular_area(base, altura) {
+    area = (base * altura) / 2;
+    retornar area;
+}
+
+# 3. Llamadas a funciones guardando el resultado en variables
+res_doble = duplicar(25);
+imprimir res_doble;
+
+res_area = calcular_area(10, 4);
+imprimir res_area;
+
+# 4. Llamada directa a una funcion dentro de imprimir
+imprimir duplicar(100);

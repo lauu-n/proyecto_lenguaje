@@ -10,11 +10,11 @@ que no existe.
 class MemoriaEjecucion:
     """Administra las variables en memoria RAM durante la ejecucion."""
 
-    def __init__(self):
-        # Diccionario interno donde se guardan las variables:
-        # clave: nombre de la variable (ej. "ventas", "precio_minimo")
-        # valor: el dato real (ej. un objeto Tabla, un numero, un texto)
+    def __init__(self, padre=None):
+        # Diccionario interno donde se guardan las variables locales
         self.variables = {}
+        # Memoria padre (para soportar ambitos locales de funciones)
+        self.padre = padre
 
     def guardar(self, nombre, valor):
         """Guarda o actualiza una variable en memoria.
@@ -26,22 +26,26 @@ class MemoriaEjecucion:
     def obtener(self, nombre, linea=None, columna=None):
         """Busca una variable en la memoria y devuelve su valor.
 
-        Si la variable no existe, lanza un Error Semantico claro.
+        Si no esta en la memoria local, busca recursivamente en la memoria padre.
+        Si la variable no existe en ningun ambito, lanza un Error Semantico claro.
         """
-        if nombre not in self.variables:
-            posicion = ""
-            if linea is not None:
-                posicion = f" (linea {linea}, columna {columna})" if columna is not None else f" (linea {linea})"
+        if nombre in self.variables:
+            return self.variables[nombre]
 
-            raise NameError(
-                f"Error semantico{posicion}: la variable '{nombre}' no ha sido declarada."
-            )
+        if self.padre is not None:
+            return self.padre.obtener(nombre, linea=linea, columna=columna)
 
-        return self.variables[nombre]
+        posicion = ""
+        if linea is not None:
+            posicion = f" (linea {linea}, columna {columna})" if columna is not None else f" (linea {linea})"
+
+        raise NameError(
+            f"Error semantico{posicion}: la variable '{nombre}' no ha sido declarada."
+        )
 
     def existe(self, nombre):
         """Comprueba si una variable ya fue creada (devuelve True o False)."""
-        return nombre in self.variables
+        return (nombre in self.variables) or (self.padre is not None and self.padre.existe(nombre))
 
     def limpiar(self):
         """Borra todas las variables de la memoria."""
