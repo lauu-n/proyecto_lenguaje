@@ -59,6 +59,8 @@ sentencia
     : asignacion ';'
     | cocoGraficar ';'
     | cocoGuardarCSV ';'
+    | cocoImprimir ';'
+    | expresion ';'
     ;
 
 
@@ -129,6 +131,18 @@ cargaCSV
 // COCOGRAFICAR para una grafica, COCOGUARDAR para esta.
 cocoGuardarCSV
     : COCOGUARDAR ID COMO STRING
+    ;
+
+
+// -------------------------
+// REGLA: cocoImprimir
+// -------------------------
+// Imprime en consola el resultado de una expresion o tabla.
+// Soporta tanto sintaxis directa como con parentesis:
+// imprimir 5 + 3;  o  imprimir(5 + 3);
+// mostrar 5 + 3;   o  mostrar(5 + 3);
+cocoImprimir
+    : COCOIMPRIMIR ( '(' expresion ')' | expresion )
     ;
 
 
@@ -464,6 +478,7 @@ COCODONDE         : 'donde';
 COCOGRAFICAR      : 'graficar';
 COCOTITULO        : 'titulo';
 COCOGUARDAR       : 'guardar';
+COCOIMPRIMIR      : 'imprimir' | 'mostrar';
 COMO              : 'como';
 COCOBARRAS        : 'barras';
 COCOLINEAS        : 'lineas';

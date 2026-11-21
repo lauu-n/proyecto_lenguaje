@@ -1,0 +1,26 @@
+# Ejemplo 5: operaciones aritmeticas basicas e impresion en consola
+# Demuestra que Cocosette funciona como lenguaje de proposito general
+
+# 1. Operaciones aritmeticas basicas
+res_suma = 15 + 25;
+res_resta = 100 - 35;
+res_multiplicacion = 12 * 4;
+res_division = 100 / 4;
+res_modulo = 17 % 5;
+res_potencia = 2 ^ 8;
+
+# 2. Impresion directa de resultados
+imprimir "=== PRUEBAS DE ARITMETICA ===";
+imprimir res_suma;
+imprimir res_resta;
+imprimir res_multiplicacion;
+imprimir res_division;
+imprimir res_modulo;
+imprimir res_potencia;
+
+# 3. Impresion de expresiones calculadas en vivo
+imprimir 50 + (10 * 3);
+imprimir "Resultado: OK";
+
+# 4. Expresion suelta valida (Expression Statement)
+100 + 200;

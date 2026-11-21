@@ -480,14 +480,27 @@ class InterpreteVisitor(CocosetteVisitor):
 
         return valor_calculado
 
+    def visitCocoImprimir(self, ctx):
+        """Imprime el resultado de una expresion o tabla en consola."""
+        valor = self.visit(ctx.expresion())
+        if isinstance(valor, Tabla):
+            valor.mostrar()
+        else:
+            print(valor)
+        return valor
+
     def visitSentencia(self, ctx):
-        """Ejecuta una sola sentencia (asignacion, guardar o graficar)."""
+        """Ejecuta una sola sentencia (asignacion, guardar, graficar, imprimir o expresion)."""
         if ctx.asignacion() is not None:
             return self.visitAsignacion(ctx.asignacion())
         elif ctx.cocoGuardarCSV() is not None:
             return self.visitCocoGuardarCSV(ctx.cocoGuardarCSV())
         elif ctx.cocoGraficar() is not None:
             return self.visitCocoGraficar(ctx.cocoGraficar())
+        elif ctx.cocoImprimir() is not None:
+            return self.visitCocoImprimir(ctx.cocoImprimir())
+        elif ctx.expresion() is not None:
+            return self.visit(ctx.expresion())
         return None
 
     def visitPrograma(self, ctx):
