@@ -1,0 +1,37 @@
+# ====================================================================
+# EJEMPLO 10: PERCEPTRON Y RED NEURONAL MULTICAPA PARA XOR
+# ====================================================================
+
+# PARTE 1: Perceptron entrenado desde dataset tabular (Compuerta AND)
+datos_and = cargar "datos/compuerta_and.csv";
+neurona_and = perceptron(datos_and, "x1", "x2", "y", 0.1, 1000);
+imprimir neurona_and;
+
+# Evaluacion de la compuerta AND aprendida
+imprimir calcular(neurona_and, 0, 0);
+imprimir calcular(neurona_and, 0, 1);
+imprimir calcular(neurona_and, 1, 0);
+imprimir calcular(neurona_and, 1, 1);
+
+# PARTE 2: Perceptron Multicapa (MLP) para el problema no lineal XOR
+# XOR = AND(NAND(x1, x2), OR(x1, x2))
+n_nand = perceptron(-1.0, -1.0, 1.5);
+n_or   = perceptron(1.0, 1.0, -0.5);
+n_salida = perceptron(1.0, 1.0, -1.5);
+
+# Evaluacion de la red neuronal con llamadas recursivas a calcular
+# Caso (0, 0) -> 0
+xor_00 = calcular(n_salida, calcular(n_nand, 0, 0), calcular(n_or, 0, 0));
+imprimir xor_00;
+
+# Caso (0, 1) -> 1
+xor_01 = calcular(n_salida, calcular(n_nand, 0, 1), calcular(n_or, 0, 1));
+imprimir xor_01;
+
+# Caso (1, 0) -> 1
+xor_10 = calcular(n_salida, calcular(n_nand, 1, 0), calcular(n_or, 1, 0));
+imprimir xor_10;
+
+# Caso (1, 1) -> 0
+xor_11 = calcular(n_salida, calcular(n_nand, 1, 1), calcular(n_or, 1, 1));
+imprimir xor_11;

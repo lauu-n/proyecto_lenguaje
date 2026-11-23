@@ -1,0 +1,21 @@
+# ====================================================================
+# EJEMPLO 08: REGRESION LINEAL (THE SQUARE TRICK - LUIS SERRANO)
+# ====================================================================
+
+# 1. Cargar el dataset de precios de casas (Tabla 3.2 de Luis Serrano)
+casas = cargar "datos/casas.csv";
+
+# 2. Entrenar el modelo de regresion lineal: y = m * x + b
+# Aprende la relacion entre numero de habitaciones y precio
+modelo_casas = regresion_lineal(casas, "habitaciones", "precio", 0.01, 1000);
+
+# 3. Mostrar la ecuacion entrenada
+imprimir modelo_casas;
+
+# 4. Estimar el precio para una casa de 4 habitaciones
+prediccion_4_hab = calcular(modelo_casas, 4);
+imprimir prediccion_4_hab;
+
+# 5. Estimar el precio para una casa de 7 habitaciones
+prediccion_7_hab = calcular(modelo_casas, 7);
+imprimir prediccion_7_hab;

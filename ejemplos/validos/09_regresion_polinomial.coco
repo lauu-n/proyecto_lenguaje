@@ -1,0 +1,20 @@
+# ====================================================================
+# EJEMPLO 09: REGRESION POLINOMIAL (CURVA CUADRATICA - LUIS SERRANO)
+# ====================================================================
+
+# 1. Cargar el dataset parabolico
+datos_curva = cargar "datos/curva.csv";
+
+# 2. Entrenar el modelo polinomial de segundo grado: y = a*x^2 + b*x + c
+modelo_curva = regresion_polinomial(datos_curva, "x", "y");
+
+# 3. Mostrar la ecuacion de la parabola ajustada
+imprimir modelo_curva;
+
+# 4. Evaluar la curva en x = 4 (esperado: 4^2 + 1 = 17)
+estimacion_4 = calcular(modelo_curva, 4);
+imprimir estimacion_4;
+
+# 5. Evaluar la curva en x = -5 (esperado: (-5)^2 + 1 = 26)
+estimacion_neg5 = calcular(modelo_curva, -5);
+imprimir estimacion_neg5;
