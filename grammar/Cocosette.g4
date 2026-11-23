@@ -211,11 +211,11 @@ cocoLlamadaML
     ;
 
 cocoRegresionLineal
-    : COCOREGRESION_LINEAL '(' expresion ',' STRING ',' STRING ( ',' expresion ( ',' expresion )? )? ')'
+    : COCOREGRESION_LINEAL '(' listaArgumentos ')'
     ;
 
 cocoRegresionPoli
-    : COCOREGRESION_POLI '(' expresion ',' STRING ',' STRING ( ',' expresion )? ')'
+    : COCOREGRESION_POLI '(' listaArgumentos ')'
     ;
 
 cocoPerceptron
@@ -223,7 +223,7 @@ cocoPerceptron
     ;
 
 cocoCalcular
-    : COCOCALCULAR '(' expresion ( ',' expresion )* ')'
+    : COCOCALCULAR '(' listaArgumentos ')'
     ;
 
 
