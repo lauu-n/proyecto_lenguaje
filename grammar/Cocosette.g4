@@ -200,6 +200,34 @@ listaArgumentos
     ;
 
 
+// ================================================================
+// CORTE III: REGLAS DE MACHINE LEARNING Y EVALUACION
+// ================================================================
+cocoLlamadaML
+    : cocoRegresionLineal
+    | cocoRegresionPoli
+    | cocoPerceptron
+    | cocoCalcular
+    ;
+
+cocoRegresionLineal
+    : COCOREGRESION_LINEAL '(' expresion ',' STRING ',' STRING ( ',' expresion ( ',' expresion )? )? ')'
+    ;
+
+cocoRegresionPoli
+    : COCOREGRESION_POLI '(' expresion ',' STRING ',' STRING ( ',' expresion )? ')'
+    ;
+
+cocoPerceptron
+    : COCOPERCEPTRON '(' listaArgumentos ')'
+    ;
+
+cocoCalcular
+    : COCOCALCULAR '(' expresion ( ',' expresion )* ')'
+    ;
+
+
+
 // -------------------------
 // REGLA: operacion
 // -------------------------
@@ -475,6 +503,7 @@ expresion
     | expresion '||' expresion                          # expOr
     | '(' expresion ')'                                 # expParentesis
     | llamadaFuncion                                    # expLlamada
+    | cocoLlamadaML                                     # expLlamadaML
     | literal                                           # expLiteral
     | ID                                                 # expIdentificador
     ;
@@ -537,6 +566,11 @@ COCOIMPRIMIR      : 'imprimir' | 'mostrar';
 COCOMIENTRAS      : 'mientras' | 'while';
 COCOFUNCION       : 'funcion' | 'def' | 'fn';
 COCORETORNAR      : 'retornar' | 'return';
+// CORTE III: MACHINE LEARNING Y EVALUACION
+COCOREGRESION_LINEAL : 'regresion_lineal';
+COCOREGRESION_POLI   : 'regresion_polinomial';
+COCOPERCEPTRON       : 'perceptron';
+COCOCALCULAR         : 'calcular';
 COMO              : 'como';
 COCOBARRAS        : 'barras';
 COCOLINEAS        : 'lineas';
