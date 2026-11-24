@@ -59,11 +59,6 @@ sentencia
     : asignacion ';'
     | cocoGraficar ';'
     | cocoGuardarCSV ';'
-    | cocoImprimir ';'
-    | cocoDefFuncion ';'?
-    | cocoRetornar
-    | cocoMientras ';'?
-    | expresion ';'
     ;
 
 
@@ -135,97 +130,6 @@ cargaCSV
 cocoGuardarCSV
     : COCOGUARDAR ID COMO STRING
     ;
-
-
-// -------------------------
-// REGLA: cocoImprimir
-// -------------------------
-// Imprime en consola el resultado de una expresion o tabla.
-// Soporta tanto sintaxis directa como con parentesis:
-// imprimir 5 + 3;  o  imprimir(5 + 3);
-// mostrar 5 + 3;   o  mostrar(5 + 3);
-cocoImprimir
-    : COCOIMPRIMIR ( '(' expresion ')' | expresion )
-    ;
-
-
-// -------------------------
-// REGLA: cocoMientras
-// -------------------------
-// Bucle iterativo de control de flujo.
-// Repite el bloque de sentencias mientras la expresion sea verdadera.
-// Soporta sintaxis con o sin parentesis en la condicion:
-// mientras (x < 10) { ... }  o  while x < 10 { ... }
-cocoMientras
-    : COCOMIENTRAS '('? expresion ')'? '{' sentencia* '}'
-    ;
-
-
-// -------------------------
-// REGLA: cocoDefFuncion
-// -------------------------
-// Definicion de funciones reutilizables con parametros.
-// Ejemplo:
-// funcion sumar(a, b) {
-//     retornar a + b;
-// }
-cocoDefFuncion
-    : COCOFUNCION ID '(' listaParams? ')' '{' sentencia* '}'
-    ;
-
-listaParams
-    : ID ( ',' ID )*
-    ;
-
-// -------------------------
-// REGLA: cocoRetornar
-// -------------------------
-// Retorna un valor desde una funcion.
-// Ejemplo: retornar a + b;  o  retornar;
-cocoRetornar
-    : COCORETORNAR expresion? ';'
-    ;
-
-// -------------------------
-// REGLA: llamadaFuncion
-// -------------------------
-// Invoca una funcion pasando argumentos.
-// Ejemplo: sumar(10, 20)
-llamadaFuncion
-    : ID '(' listaArgumentos? ')'
-    ;
-
-listaArgumentos
-    : expresion ( ',' expresion )*
-    ;
-
-
-// ================================================================
-// CORTE III: REGLAS DE MACHINE LEARNING Y EVALUACION
-// ================================================================
-cocoLlamadaML
-    : cocoRegresionLineal
-    | cocoRegresionPoli
-    | cocoPerceptron
-    | cocoCalcular
-    ;
-
-cocoRegresionLineal
-    : COCOREGRESION_LINEAL '(' listaArgumentos ')'
-    ;
-
-cocoRegresionPoli
-    : COCOREGRESION_POLI '(' listaArgumentos ')'
-    ;
-
-cocoPerceptron
-    : COCOPERCEPTRON '(' listaArgumentos ')'
-    ;
-
-cocoCalcular
-    : COCOCALCULAR '(' listaArgumentos ')'
-    ;
-
 
 
 // -------------------------
@@ -443,11 +347,14 @@ cocondicion
 //
 // El ? significa "puede aparecer o puede no aparecer".
 cocoGraficar
-    : COCOGRAFICAR cocoGrafica ID
-        EJE_X ID
-        EJE_Y ID
-        ( COCOTITULO STRING )?
-        ( COCOGUARDAR COMO STRING )?
+    : COCOGRAFICAR cocoGrafica tabla=ID
+        EJE_X colx=ID
+        ( EJE_Y coly=ID )?
+        ( COCOTITULO titulo=STRING )?
+        ( COCOETIQUETAX etx=STRING )?
+        ( COCOETIQUETAY ety=STRING )?
+        ( COCOLEYENDA leyenda=STRING )?
+        ( COCOGUARDAR COMO ruta=STRING )?
     ;
 
 
@@ -467,7 +374,6 @@ cocoGrafica
     | COCOLINEAS
     | COCOHISTOGRAMA
     | COCODISPERSION
-    | COCOCAJA
     ;
 
 
@@ -502,8 +408,6 @@ expresion
     | expresion '&&' expresion                          # expAnd
     | expresion '||' expresion                          # expOr
     | '(' expresion ')'                                 # expParentesis
-    | llamadaFuncion                                    # expLlamada
-    | cocoLlamadaML                                     # expLlamadaML
     | literal                                           # expLiteral
     | ID                                                 # expIdentificador
     ;
@@ -562,21 +466,11 @@ COCODONDE         : 'donde';
 COCOGRAFICAR      : 'graficar';
 COCOTITULO        : 'titulo';
 COCOGUARDAR       : 'guardar';
-COCOIMPRIMIR      : 'imprimir' | 'mostrar';
-COCOMIENTRAS      : 'mientras' | 'while';
-COCOFUNCION       : 'funcion' | 'def' | 'fn';
-COCORETORNAR      : 'retornar' | 'return';
-// CORTE III: MACHINE LEARNING Y EVALUACION
-COCOREGRESION_LINEAL : 'regresion_lineal';
-COCOREGRESION_POLI   : 'regresion_polinomial';
-COCOPERCEPTRON       : 'perceptron';
-COCOCALCULAR         : 'calcular';
 COMO              : 'como';
 COCOBARRAS        : 'barras';
 COCOLINEAS        : 'lineas';
 COCOHISTOGRAMA    : 'histograma';
 COCODISPERSION    : 'dispersion';
-COCOCAJA          : 'caja';
 EJE_X             : 'x';
 EJE_Y             : 'y';
 COCOBOOLEANO      : 'verdadero' | 'falso';
@@ -605,7 +499,10 @@ COCOMINIMO        : 'minimo';
 COCOMAXIMO        : 'maximo';
 COCODESVIACIONEST : 'desviacion_estandar';
 COCOCONTAR        : 'contar';
-
+// CORTE III
+COCOETIQUETAX     : 'etiqueta_x';
+COCOETIQUETAY     : 'etiqueta_y';
+COCOLEYENDA       : 'leyenda';
 
 
 
