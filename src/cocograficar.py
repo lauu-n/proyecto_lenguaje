@@ -203,7 +203,23 @@ def _ecuacion(modelo):
         return f"y = {modelo['m']:g}x {_signo(modelo['b'])}"
     return f"y = {modelo['a']:g}x^2 {_signo(modelo['b'])}x {_signo(modelo['c'])}"
 
-
+def _recortar_recta(w1, w2, b, xa, xb, ya, yb): # calcula dónde corta el rectángulo del gráfico (4 intersecciones posibles, una por borde) y dibuja solo ese tramo.
+    """Recorta la recta w1*x + w2*y + b = 0 al rectangulo [xa,xb] x [ya,yb]."""
+    pts, eps = [], 1e-9
+    if w2 != 0:
+        for x in (xa, xb):                      # cortes con los bordes izq/der
+            y = -(w1 * x + b) / w2
+            if ya - eps <= y <= yb + eps:
+                pts.append((x, y))
+    if w1 != 0:
+        for y in (ya, yb):                      # cortes con los bordes arriba/abajo
+            x = -(w2 * y + b) / w1
+            if xa - eps <= x <= xb + eps:
+                pts.append((x, y))
+    if len(pts) < 2:
+        return None
+    pts.sort()
+    return pts[0], pts[-1]
 
 
 """
@@ -213,31 +229,64 @@ Aquí los dos ejes son numéricos, y por eso se valida con _num tanto x como y.
 Se muestrean puntos y se unen
 ylim incluye la curva
 """
-def _prep_dispersion(tabla, x, y, modelo=None):
-    pares = [(_num(f[x], x), _num(f[y], y)) for f in tabla.filas
-             if f.get(x) is not None and f.get(y) is not None]
-    if not pares:
+def _prep_dispersion(tabla, x, y, modelo=None, col_clase=None):
+    filas = [f for f in tabla.filas
+             if f.get(x) is not None and f.get(y) is not None
+             and (col_clase is None or f.get(col_clase) is not None)]
+    if not filas:
         raise ValueError("Error semantico: no hay datos validos para graficar.")
+    pares = [(_num(f[x], x), _num(f[y], y), f[col_clase] if col_clase else None)
+             for f in filas]
     xs, ys = [p[0] for p in pares], [p[1] for p in pares]
     lo, hi = min(xs), max(xs)
     ymin, ymax = min(ys), max(ys)
 
-    # Curva del modelo: 101 puntos entre el x minimo y el maximo
+    es_perceptron = isinstance(modelo, dict) and modelo.get("tipo") == "perceptron"
+
+    # Curva de regresion (lineal / polinomial)
     curva = []
-    if modelo is not None:
+    if modelo is not None and not es_perceptron:
         curva = [(lo + (hi - lo) * i / 100, _evaluar(modelo, lo + (hi - lo) * i / 100))
                  for i in range(101)]
         cy = [p[1] for p in curva]
-        ymin, ymax = min(ymin, min(cy)), max(ymax, max(cy))   # que la curva quepa
+        ymin, ymax = min(ymin, min(cy)), max(ymax, max(cy))
+
+    # Margen del 10% para que los puntos no queden pegados al marco
+    if col_clase is not None or es_perceptron:
+        mx = (hi - lo) * 0.1 or 0.5
+        my = (ymax - ymin) * 0.1 or 0.5
+        lo, hi, ymin, ymax = lo - mx, hi + mx, ymin - my, ymax + my
+
+    # Un color por clase
+    clases = sorted({p[2] for p in pares}, key=str) if col_clase else []
+    color_de = {c: COLORES_CLASE[i % len(COLORES_CLASE)] for i, c in enumerate(clases)}
+
+    # Frontera de decision del perceptron
+    recta = None
+    if es_perceptron:
+        pesos = modelo.get("pesos", [])
+        if len(pesos) != 2:
+            raise ValueError("Error semantico: solo se grafican perceptrones de 2 entradas.")
+        recta = _recortar_recta(pesos[0], pesos[1], modelo["sesgo"], lo, hi, ymin, ymax)
 
     def dibujar(L, fx, fy, color):
-        for a, b in pares:
-            L.circulo(fx(a), fy(b), 5, color)
+        for vx, vy, c in pares:
+            L.circulo(fx(vx), fy(vy), 6, color_de[c] if col_clase else color)
         for p, q in zip(curva, curva[1:]):
             L.linea(fx(p[0]), fy(p[1]), fx(q[0]), fy(q[1]), PALETA[1], grosor=3)
+        if recta:
+            (ax, ay), (bx, by) = recta
+            L.linea(fx(ax), fy(ay), fx(bx), fy(by), (0, 0, 0), grosor=3)
+
+    entradas = [(color_de[c], "cuadro", f"Clase {c}") for c in clases]
+    if recta:
+        entradas.append(((0, 0, 0), "linea", "Frontera de decision"))
 
     return {"cats": None, "xlim": (lo, hi), "ylim": (ymin, ymax), "dibujar": dibujar,
-            "etiqueta_modelo": _ecuacion(modelo) if modelo is not None else None}
+            "etiqueta_modelo": _ecuacion(modelo) if modelo is not None and not es_perceptron else None,
+            "entradas_extra": entradas,
+            "usa_clases": col_clase is not None,
+            "leyenda_fuera": col_clase is not None or es_perceptron}
 
 """
 LÍNEAS
@@ -284,26 +333,29 @@ def _prep_lineas(tabla, x, y):
 ANCHO, ALTO = 800, 500
 MARGEN_IZQ, MARGEN_DER, MARGEN_SUP = 100, 30, 55
 PALETA = [(182, 149, 192), (255, 127, 14), (44, 160, 44), (214, 39, 40), (148, 103, 189)]
+COLORES_CLASE = [PALETA[0], PALETA[3], PALETA[2], PALETA[4]]
 
 TIPOS = ("barras", "lineas", "histograma", "dispersion")
 
 def graficar(tipo, tabla, x, y=None, titulo=None, etiqueta_x=None,
-             etiqueta_y=None, leyenda=None, ruta=None, modelo=None):
+             etiqueta_y=None, leyenda=None, ruta=None, modelo=None, col_clase=None):
     """Dibuja una grafica a partir de una Tabla y la guarda como PNG."""
     if tipo not in TIPOS:                                         # NUEVO
         raise ValueError(f"Tipo de grafico desconocido: '{tipo}'. Validos: {TIPOS}")
 
-    tabla._validar_columnas([x] + ([y] if y else []))
+    tabla._validar_columnas([x] + ([y] if y else []) + ([col_clase] if col_clase else []))
     if tipo != "histograma" and y is None:                        # NUEVO
         raise ValueError(f"Error semantico: el grafico '{tipo}' requiere un eje y.")
     if modelo is not None and tipo != "dispersion":
         raise ValueError("Error semantico: 'ajuste' solo se puede usar con graficos de dispersion.")
+    if col_clase is not None and tipo != "dispersion":
+        raise ValueError("Error semantico: 'por_clase' solo se puede usar con graficos de dispersion.")
 
     preparadores = {                                              # NUEVO
         "barras": lambda: _prep_barras(tabla, x, y),
         "lineas": lambda: _prep_lineas(tabla, x, y),
         "histograma": lambda: _prep_histograma(tabla, x),
-        "dispersion": lambda: _prep_dispersion(tabla, x, y, modelo),
+        "dispersion": lambda: _prep_dispersion(tabla, x, y, modelo, col_clase),
     }
 
     prep = preparadores[tipo]()
@@ -323,9 +375,25 @@ def graficar(tipo, tabla, x, y=None, titulo=None, etiqueta_x=None,
         rotar = maxw > ancho_plot / len(cats) - 6
     margen_inf = 60 + (maxw if rotar else 14)
 
-    px0, px1 = MARGEN_IZQ, ANCHO - MARGEN_DER
-    py0, py1 = MARGEN_SUP, ALTO - margen_inf
+    # Leyenda
+    entradas = []
+    if leyenda and not prep.get("usa_clases"):
+        entradas.append((PALETA[0], "cuadro", leyenda))
+    if prep.get("etiqueta_modelo"):
+        entradas.append((PALETA[1], "linea", prep["etiqueta_modelo"]))
+    entradas += prep.get("entradas_extra", [])
 
+    w_ley = max((ancho_texto(t) for _, _, t in entradas), default=0) + 40
+    fuera = bool(entradas) and prep.get("leyenda_fuera", False)
+    margen_der = w_ley + 25 if fuera else MARGEN_DER
+
+    # Área de dibujo
+    ancho_plot = ANCHO - MARGEN_IZQ - margen_der
+
+    px0 = MARGEN_IZQ
+    px1 = ANCHO - margen_der
+    py0 = MARGEN_SUP
+    py1 = ALTO - margen_inf
     def fx(v):
         if cats is not None:                                      # NUEVO
             return px0 + (v + 0.5) * ancho_plot / len(cats)
@@ -377,17 +445,11 @@ def graficar(tipo, tabla, x, y=None, titulo=None, etiqueta_x=None,
 
     et_y = etiqueta_y or (y if y else "frecuencia")               # NUEVO
     L.texto_vertical(15, (py0 + py1) // 2 + ancho_texto(et_y) // 2, et_y)
-
-    # Leyenda: una fila por serie (puntos de datos y/o curva del modelo)
-    entradas = []
-    if leyenda:
-        entradas.append((color, "cuadro", leyenda))
-    if prep.get("etiqueta_modelo"):
-        entradas.append((PALETA[1], "linea", prep["etiqueta_modelo"]))
+    
     if entradas:
-        w = max(ancho_texto(t) for _, _, t in entradas) + 40
+        w = w_ley
         alto = 24 * len(entradas) + 4
-        lx, ly = px1 - w - 10, py0 + 10
+        lx, ly = (px1 + 12, py0) if fuera else (px1 - w - 10, py0 + 10)
         L.rect(lx, ly, lx + w, ly + alto, (255, 255, 255))
         L.contorno(lx, ly, lx + w, ly + alto, (120, 120, 120))
         for i, (c, forma, t) in enumerate(entradas):
