@@ -20,6 +20,7 @@ sys.path.append("parser")
 from CocosetteVisitor import CocosetteVisitor
 from memoria_ejecucion import MemoriaEjecucion
 from tabla import AgrupacionTabla, Tabla
+from cocograficar import graficar
 
 
 # ====================================================================
@@ -378,12 +379,56 @@ class InterpreteVisitor(CocosetteVisitor):
         return agrupacion_global.resumir(lista_especificaciones)
 
     def visitCocoGraficar(self, ctx):
-        """Notificacion informativa para graficas (correspondiente a Corte 3)."""
-        tipo = ctx.cocoGrafica().getText()
-        tabla_nombre = ctx.ID(0).getText()
-        eje_x = ctx.ID(1).getText()
-        eje_y = ctx.ID(2).getText()
-        print(f"[Grafica] Grafico de tipo '{tipo}' sobre '{tabla_nombre}' (x: {eje_x}, y: {eje_y}).")
+        """Genera una grafica PNG a partir de una tabla en memoria."""
+        linea = ctx.start.line # Donde empieza la sentencia, las guardamos para los mensajes de error
+        columna = ctx.start.column
+        nombre = ctx.tabla.text # Nombre de la variable que escribió el usuario
+        tabla = self.memoria.obtener(nombre, linea=linea, columna=columna) # Buscamos la tabla en memoria
+
+        if not isinstance(tabla, Tabla):
+            raise TypeError(
+                f"Error semantico (linea {linea}, columna {columna}): "
+                f"'{nombre}' no es una tabla y no se puede graficar."
+            )
+
+        def texto(token):
+            """Token opcional -> cadena sin comillas, o None si no se escribio."""
+            return quitar_comillas(token.text) if token is not None else None
+
+        modelo = None
+        if ctx.modelo is not None:
+            nombre_modelo = ctx.modelo.text
+            modelo = self.memoria.obtener(
+                nombre_modelo,
+                linea=linea,
+                columna=columna
+            )
+
+            if not isinstance(modelo, dict) or "tipo" not in modelo:
+                raise TypeError(
+                    f"Error semantico (linea {linea}, columna {columna}): "
+                    f"'{nombre_modelo}' no es un modelo entrenado."
+                )
+        
+        # Recoge errores y los reporta con linea y columna de la sentencia de graficar
+        try:
+            mensaje = graficar(
+                tipo=ctx.cocoGrafica().getText(),
+                tabla=tabla,
+                x=ctx.colx.text,
+                y=ctx.coly.text if ctx.coly is not None else None,
+                titulo=texto(ctx.titulo),
+                etiqueta_x=texto(ctx.etx),
+                etiqueta_y=texto(ctx.ety),
+                leyenda=texto(ctx.leyenda),
+                ruta=texto(ctx.ruta),
+                modelo=modelo,
+            )
+        except (KeyError, TypeError, ValueError) as error:
+            detalle = error.args[0] if error.args else str(error)
+            raise ValueError(f"{detalle} (linea {linea}, columna {columna})")
+
+        print(f"[Grafica] {mensaje}")
         return None
 
     def visitOperacion(self, ctx):
