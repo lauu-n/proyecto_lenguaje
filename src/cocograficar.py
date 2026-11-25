@@ -241,52 +241,68 @@ def _prep_dispersion(tabla, x, y, modelo=None, col_clase=None):
     lo, hi = min(xs), max(xs)
     ymin, ymax = min(ys), max(ys)
 
-    es_perceptron = isinstance(modelo, dict) and modelo.get("tipo") == "perceptron"
+    # 'modelo' puede ser un modelo, una lista de modelos o None
+    if modelo is None:
+        modelos = []
+    elif isinstance(modelo, list):
+        modelos = modelo
+    else:
+        modelos = [modelo]
+    perceptrones = [m for m in modelos if isinstance(m, dict) and m.get("tipo") == "perceptron"]
+    curvas = [m for m in modelos if not (isinstance(m, dict) and m.get("tipo") == "perceptron")]
+    if len(curvas) > 1 or (curvas and perceptrones):
+        raise ValueError(
+            "Error semantico: solo se pueden combinar varios perceptrones; "
+            "una curva de regresion se grafica sola."
+        )
 
     # Curva de regresion (lineal / polinomial)
     curva = []
-    if modelo is not None and not es_perceptron:
-        curva = [(lo + (hi - lo) * i / 100, _evaluar(modelo, lo + (hi - lo) * i / 100))
+    if curvas:
+        m = curvas[0]
+        curva = [(lo + (hi - lo) * i / 100, _evaluar(m, lo + (hi - lo) * i / 100))
                  for i in range(101)]
         cy = [p[1] for p in curva]
         ymin, ymax = min(ymin, min(cy)), max(ymax, max(cy))
 
     # Margen del 10% para que los puntos no queden pegados al marco
-    if col_clase is not None or es_perceptron:
+    if col_clase is not None or perceptrones:
         mx = (hi - lo) * 0.1 or 0.5
         my = (ymax - ymin) * 0.1 or 0.5
         lo, hi, ymin, ymax = lo - mx, hi + mx, ymin - my, ymax + my
 
-    # Un color por clase
     clases = sorted({p[2] for p in pares}, key=str) if col_clase else []
     color_de = {c: COLORES_CLASE[i % len(COLORES_CLASE)] for i, c in enumerate(clases)}
 
-    # Frontera de decision del perceptron
-    recta = None
-    if es_perceptron:
-        pesos = modelo.get("pesos", [])
+    # Una frontera de decision por cada perceptron
+    rectas = []
+    for m in perceptrones:
+        pesos = m.get("pesos", [])
         if len(pesos) != 2:
             raise ValueError("Error semantico: solo se grafican perceptrones de 2 entradas.")
-        recta = _recortar_recta(pesos[0], pesos[1], modelo["sesgo"], lo, hi, ymin, ymax)
+        rectas.append(_recortar_recta(pesos[0], pesos[1], m["sesgo"], lo, hi, ymin, ymax))
 
     def dibujar(L, fx, fy, color):
-        for vx, vy, c in pares:
-            L.circulo(fx(vx), fy(vy), 6, color_de[c] if col_clase else color)
+        for i, r in enumerate(rectas):
+            if r:
+                (ax, ay), (bx, by) = r
+                L.linea(fx(ax), fy(ay), fx(bx), fy(by), FRONTERAS[i % len(FRONTERAS)], grosor=3)
         for p, q in zip(curva, curva[1:]):
             L.linea(fx(p[0]), fy(p[1]), fx(q[0]), fy(q[1]), PALETA[1], grosor=3)
-        if recta:
-            (ax, ay), (bx, by) = recta
-            L.linea(fx(ax), fy(ay), fx(bx), fy(by), (0, 0, 0), grosor=3)
+        for vx, vy, c in pares:
+            L.circulo(fx(vx), fy(vy), 6, color_de[c] if col_clase else color)
 
     entradas = [(color_de[c], "cuadro", f"Clase {c}") for c in clases]
-    if recta:
-        entradas.append(((0, 0, 0), "linea", "Frontera de decision"))
+    for i, r in enumerate(rectas):
+        if r:
+            nombre = "Frontera de decision" if len(perceptrones) == 1 else f"Frontera {i + 1}"
+            entradas.append((FRONTERAS[i % len(FRONTERAS)], "linea", nombre))
 
     return {"cats": None, "xlim": (lo, hi), "ylim": (ymin, ymax), "dibujar": dibujar,
-            "etiqueta_modelo": _ecuacion(modelo) if modelo is not None and not es_perceptron else None,
+            "etiqueta_modelo": _ecuacion(curvas[0]) if curvas else None,
             "entradas_extra": entradas,
             "usa_clases": col_clase is not None,
-            "leyenda_fuera": col_clase is not None or es_perceptron}
+            "leyenda_fuera": col_clase is not None or bool(perceptrones)}
 
 """
 LÍNEAS
@@ -334,6 +350,7 @@ ANCHO, ALTO = 800, 500
 MARGEN_IZQ, MARGEN_DER, MARGEN_SUP = 100, 30, 55
 PALETA = [(182, 149, 192), (255, 127, 14), (44, 160, 44), (214, 39, 40), (148, 103, 189)]
 COLORES_CLASE = [PALETA[0], PALETA[3], PALETA[2], PALETA[4]]
+FRONTERAS = [(0, 0, 0), PALETA[1], PALETA[4], PALETA[2]]
 
 TIPOS = ("barras", "lineas", "histograma", "dispersion")
 
