@@ -107,6 +107,47 @@ python3 src/main.py ejemplos/corte2/03_agrupacion_y_estadisticas.coco
 
 ---
 
+## Terminal Interactiva (CLI / REPL) — Corte III
+
+Cocosette incluye una **terminal interactiva** que permite escribir y ejecutar código del lenguaje en tiempo real, manteniendo el estado de las variables entre comandos.
+
+### Cómo usarla
+
+```bash
+# Entrar directamente a la terminal
+python3 src/terminal.py
+
+# Ejecutar un archivo .coco y terminar
+python3 src/terminal.py <archivo.coco>
+
+# Ejecutar un archivo y luego quedarse en la terminal (conserva la memoria)
+python3 src/terminal.py -i <archivo.coco>
+```
+
+### Comandos especiales de la terminal
+```
+| Comando             | Descripción                                     |
+
+| ayuda / help        | Muestra la ayuda de la terminal                 |
+| salir / exit / quit | Cierra la terminal                              |
+| limpiar / clear     | Limpia la pantalla                              |
+| vars / variables    | Lista las variables definidas actualmente       |
+| memoria             | Muestra el contenido completo de la memoria     |
+| reset               | Borra todas las variables y reinicia la memoria |
+```
+
+### Ejemplo de sesión
+```
+coco> ventas = cargar "datos/ventas.csv";
+coco> imprimir ventas;
+coco> filtradas = ventas |> filtrar donde precio > 100;
+coco> resumen = filtradas |> agrupar por [ciudad] |> resumir total = suma(precio);
+coco> imprimir resumen;
+coco> vars
+coco> salir
+```
+
+---
 ## Estado de Avance por Cortes
 
 - [x] **Corte I (Completado):** Especificación del lenguaje, gramática ANTLR4, lexer, parser y validación sintáctica.
