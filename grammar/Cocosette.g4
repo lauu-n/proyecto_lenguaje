@@ -463,7 +463,6 @@ cocoGraficar
 // lineas
 // histograma
 // dispersion
-// caja
 cocoGrafica
     : COCOBARRAS
     | COCOLINEAS
@@ -587,7 +586,6 @@ COCOBARRAS        : 'barras';
 COCOLINEAS        : 'lineas';
 COCOHISTOGRAMA    : 'histograma';
 COCODISPERSION    : 'dispersion';
-COCOCAJA          : 'caja';
 COCOBOOLEANO      : 'verdadero' | 'falso';
 // CORTE II
 COCOCREAR         : 'crear';
