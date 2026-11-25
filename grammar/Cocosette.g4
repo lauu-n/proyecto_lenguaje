@@ -348,15 +348,15 @@ cocondicion
 // El ? significa "puede aparecer o puede no aparecer".
 cocoGraficar
     : COCOGRAFICAR cocoGrafica tabla=ID
-        EJE_X colx=ID
-        ( EJE_Y coly=ID )?
+        ejeX colx=ID
+        ( ejeY coly=ID )?
+        ( COCOAJUSTE modelo=ID )?
         ( COCOTITULO titulo=STRING )?
         ( COCOETIQUETAX etx=STRING )?
         ( COCOETIQUETAY ety=STRING )?
         ( COCOLEYENDA leyenda=STRING )?
         ( COCOGUARDAR COMO ruta=STRING )?
     ;
-
 
 // -------------------------
 // REGLA: cocoGrafica (visual)
@@ -376,6 +376,16 @@ cocoGrafica
     | COCODISPERSION
     ;
 
+// -------------------------
+// REGLAS: ejeX y ejeY
+// -------------------------
+ejeX
+    : {self._input.LT(1).text == 'x'}? ID
+    ;
+
+ejeY
+    : {self._input.LT(1).text == 'y'}? ID
+    ;
 
 // -------------------------
 // REGLA: expresion
@@ -471,8 +481,6 @@ COCOBARRAS        : 'barras';
 COCOLINEAS        : 'lineas';
 COCOHISTOGRAMA    : 'histograma';
 COCODISPERSION    : 'dispersion';
-EJE_X             : 'x';
-EJE_Y             : 'y';
 COCOBOOLEANO      : 'verdadero' | 'falso';
 // CORTE II
 COCOCREAR         : 'crear';
@@ -503,6 +511,7 @@ COCOCONTAR        : 'contar';
 COCOETIQUETAX     : 'etiqueta_x';
 COCOETIQUETAY     : 'etiqueta_y';
 COCOLEYENDA       : 'leyenda';
+COCOAJUSTE        : 'ajuste';
 
 
 
