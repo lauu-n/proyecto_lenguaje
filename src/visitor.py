@@ -20,7 +20,7 @@ sys.path.append("parser")
 from CocosetteVisitor import CocosetteVisitor
 from memoria_ejecucion import MemoriaEjecucion
 from tabla import AgrupacionTabla, Tabla
-import ml
+from cocograficar import graficar
 
 
 # ====================================================================
@@ -71,20 +71,7 @@ def convertir_texto_a_valor_literal(texto_crudo):
 
 
 # ====================================================================
-# 2. SEÑAL DE CONTROL DE FLUJO PARA RETORNO DE FUNCIONES
-# ====================================================================
-
-
-class RetornoSignal(Exception):
-    """Senal de flujo para retornar un valor desde el cuerpo de una funcion."""
-
-    def __init__(self, valor):
-        super().__init__()
-        self.valor = valor
-
-
-# ====================================================================
-# 3. CLASE INTERPRETE VISITOR (HEREDA DE COCOSSETTEVISITOR)
+# 2. CLASE INTERPRETE VISITOR (HEREDA DE COCOSSETTEVISITOR)
 # ====================================================================
 
 
@@ -98,9 +85,6 @@ class InterpreteVisitor(CocosetteVisitor):
             self.memoria = memoria
         else:
             self.memoria = MemoriaEjecucion()
-
-        # Diccionario donde se guardan las funciones definidas por el usuario
-        self.funciones = {}
 
         # Fila que se esta evaluando actualmente (para saber el valor de las columnas)
         self.fila_actual = None
@@ -133,18 +117,6 @@ class InterpreteVisitor(CocosetteVisitor):
         linea = ctx.start.line
         columna = ctx.start.column
         return self.memoria.obtener(nombre, linea=linea, columna=columna)
-
-    def visitExpLlamada(self, ctx):
-        """Evalua la llamada a una funcion dentro de una expresion matematica o logica."""
-        return self.visitLlamadaFuncion(ctx.llamadaFuncion())
-
-    def visitExpLlamadaML(self, ctx):
-        """Evalua una llamada de Machine Learning o calcular dentro de una expresion."""
-        return self.visit(ctx.cocoLlamadaML())
-
-    def visitCocoLlamadaML(self, ctx):
-        """Enruta la llamada de ML hacia su regla especifica."""
-        return self.visitChildren(ctx)
 
     # ----------------------------------------------------------------
     # B. OPERACIONES MATEMATICAS Y LOGICAS
@@ -407,12 +379,56 @@ class InterpreteVisitor(CocosetteVisitor):
         return agrupacion_global.resumir(lista_especificaciones)
 
     def visitCocoGraficar(self, ctx):
-        """Notificacion informativa para graficas (correspondiente a Corte 3)."""
-        tipo = ctx.cocoGrafica().getText()
-        tabla_nombre = ctx.ID(0).getText()
-        eje_x = ctx.ID(1).getText()
-        eje_y = ctx.ID(2).getText()
-        print(f"[Grafica] Grafico de tipo '{tipo}' sobre '{tabla_nombre}' (x: {eje_x}, y: {eje_y}).")
+        """Genera una grafica PNG a partir de una tabla en memoria."""
+        linea = ctx.start.line # Donde empieza la sentencia, las guardamos para los mensajes de error
+        columna = ctx.start.column
+        nombre = ctx.tabla.text # Nombre de la variable que escribió el usuario
+        tabla = self.memoria.obtener(nombre, linea=linea, columna=columna) # Buscamos la tabla en memoria
+
+        if not isinstance(tabla, Tabla):
+            raise TypeError(
+                f"Error semantico (linea {linea}, columna {columna}): "
+                f"'{nombre}' no es una tabla y no se puede graficar."
+            )
+
+        def texto(token):
+            """Token opcional -> cadena sin comillas, o None si no se escribio."""
+            return quitar_comillas(token.text) if token is not None else None
+
+        modelo = None
+        if ctx.modelo is not None:
+            nombre_modelo = ctx.modelo.text
+            modelo = self.memoria.obtener(
+                nombre_modelo,
+                linea=linea,
+                columna=columna
+            )
+
+            if not isinstance(modelo, dict) or "tipo" not in modelo:
+                raise TypeError(
+                    f"Error semantico (linea {linea}, columna {columna}): "
+                    f"'{nombre_modelo}' no es un modelo entrenado."
+                )
+        
+        # Recoge errores y los reporta con linea y columna de la sentencia de graficar
+        try:
+            mensaje = graficar(
+                tipo=ctx.cocoGrafica().getText(),
+                tabla=tabla,
+                x=ctx.colx.text,
+                y=ctx.coly.text if ctx.coly is not None else None,
+                titulo=texto(ctx.titulo),
+                etiqueta_x=texto(ctx.etx),
+                etiqueta_y=texto(ctx.ety),
+                leyenda=texto(ctx.leyenda),
+                ruta=texto(ctx.ruta),
+                modelo=modelo,
+            )
+        except (KeyError, TypeError, ValueError) as error:
+            detalle = error.args[0] if error.args else str(error)
+            raise ValueError(f"{detalle} (linea {linea}, columna {columna})")
+
+        print(f"[Grafica] {mensaje}")
         return None
 
     def visitOperacion(self, ctx):
@@ -501,296 +517,22 @@ class InterpreteVisitor(CocosetteVisitor):
         valor_calculado = self.visit(ctx.cocoFuente())
 
         self.memoria.guardar(nombre_variable, valor_calculado)
+
+        if isinstance(valor_calculado, Tabla):
+            print(f"[Asignacion] '{nombre_variable}' -> Tabla ({len(valor_calculado.filas)} filas, columnas: {valor_calculado.columnas})")
+        else:
+            print(f"[Asignacion] '{nombre_variable}' = {valor_calculado}")
+
         return valor_calculado
 
-    def visitCocoImprimir(self, ctx):
-        """Imprime el resultado de una expresion o tabla en consola."""
-        valor = self.visit(ctx.expresion())
-        if isinstance(valor, Tabla):
-            valor.mostrar()
-        elif isinstance(valor, dict) and "tipo" in valor:
-            if valor["tipo"] == "lineal":
-                print(f"y = {valor['m']} * x + {valor['b']}")
-            elif valor["tipo"] == "polinomial":
-                print(f"y = {valor['a']} * x^2 + {valor['b']} * x + {valor['c']}")
-            elif valor["tipo"] == "perceptron":
-                w = valor["pesos"]
-                b = valor["sesgo"]
-                print(f"Neurona(w1={w[0]}, w2={w[1]}, sesgo={b})")
-            else:
-                print(valor)
-        else:
-            print(valor)
-        return valor
-
-    def visitCocoMientras(self, ctx):
-        """Ejecuta un bucle mientras la expresion condicion sea verdadera."""
-        while bool(self.visit(ctx.expresion())):
-            for nodo_sentencia in ctx.sentencia():
-                self.visitSentencia(nodo_sentencia)
-        return None
-
-    def visitCocoDefFuncion(self, ctx):
-        """Guarda la declaracion de una funcion (receta) en el diccionario de funciones."""
-        nombre_func = ctx.ID().getText()
-        params = []
-        if ctx.listaParams() is not None:
-            params = [nodo_id.getText() for nodo_id in ctx.listaParams().ID()]
-
-        self.funciones[nombre_func] = {
-            "params": params,
-            "cuerpo": ctx.sentencia()
-        }
-        return None
-
-    def visitCocoRetornar(self, ctx):
-        """Lanza la senal de retorno con el valor evaluado de la expresion."""
-        if ctx.expresion() is not None:
-            valor = self.visit(ctx.expresion())
-        else:
-            valor = None
-        raise RetornoSignal(valor)
-
-    def visitLlamadaFuncion(self, ctx):
-        """Ejecuta la llamada a una funcion con argumentos y ambito local."""
-        nombre_func = ctx.ID().getText()
-        linea = ctx.start.line
-        columna = ctx.start.column
-
-        if nombre_func not in self.funciones:
-            raise NameError(
-                f"Error semantico (linea {linea}, columna {columna}): la funcion '{nombre_func}' no ha sido definida."
-            )
-
-        receta = self.funciones[nombre_func]
-        nombres_params = receta["params"]
-        cuerpo = receta["cuerpo"]
-
-        valores_args = []
-        if ctx.listaArgumentos() is not None:
-            for exp in ctx.listaArgumentos().expresion():
-                valores_args.append(self.visit(exp))
-
-        if len(valores_args) != len(nombres_params):
-            raise TypeError(
-                f"Error semantico (linea {linea}, columna {columna}): la funcion '{nombre_func}' "
-                f"espera {len(nombres_params)} argumento(s), pero se pasaron {len(valores_args)}."
-            )
-
-        memoria_previa = self.memoria
-        memoria_local = MemoriaEjecucion(padre=memoria_previa)
-
-        for param, val in zip(nombres_params, valores_args):
-            memoria_local.guardar(param, val)
-
-        self.memoria = memoria_local
-        resultado = None
-
-        try:
-            for nodo_sentencia in cuerpo:
-                self.visitSentencia(nodo_sentencia)
-        except RetornoSignal as senal:
-            resultado = senal.valor
-        finally:
-            self.memoria = memoria_previa
-
-        return resultado
-
-    # ----------------------------------------------------------------
-    # G. CORTE III: MACHINE LEARNING Y EVALUACION (REGRESION, PERCEPTRON)
-    # ----------------------------------------------------------------
-
-    def _evaluar_param_columna(self, exp_ctx):
-        """Evalua un parametro de columna, admitiendo string con comillas o identificador sin comillas."""
-        if hasattr(exp_ctx, "ID") and exp_ctx.ID() is not None and not hasattr(exp_ctx, "op"):
-            nombre_id = exp_ctx.ID().getText()
-            if self.memoria.existe(nombre_id):
-                return str(self.memoria.obtener(nombre_id))
-            return nombre_id
-        val = self.visit(exp_ctx)
-        return str(val)
-
-    def _extraer_vector_numerico(self, tabla: Tabla, nombre_col: str, linea: int, columna: int):
-        """Extrae los valores numericos de una columna de una tabla."""
-        if not isinstance(tabla, Tabla):
-            raise TypeError(
-                f"Error semantico (linea {linea}, columna {columna}): "
-                f"el primer argumento debe ser una Tabla, pero se recibio {type(tabla).__name__}."
-            )
-        if nombre_col not in tabla.columnas:
-            raise ValueError(
-                f"Error semantico (linea {linea}, columna {columna}): "
-                f"la columna '{nombre_col}' no existe en la tabla. Columnas disponibles: {tabla.columnas}."
-            )
-        valores = []
-        for f in tabla.filas:
-            v = f.get(nombre_col)
-            if v is None or v == "":
-                continue
-            try:
-                valores.append(float(v))
-            except (ValueError, TypeError):
-                continue
-        return valores
-
-    def visitCocoRegresionLineal(self, ctx):
-        """Entrena una regresion lineal: regresion_lineal(tabla, col_x, col_y, [tasa], [epocas])."""
-        linea = ctx.start.line
-        columna = ctx.start.column
-        lista_exp = ctx.listaArgumentos().expresion() if ctx.listaArgumentos() else []
-
-        if len(lista_exp) < 3:
-            raise TypeError(
-                f"Error semantico (linea {linea}, columna {columna}): "
-                f"'regresion_lineal' requiere al menos 3 argumentos: (tabla, columna_x, columna_y)."
-            )
-
-        tabla = self.visit(lista_exp[0])
-        col_x = self._evaluar_param_columna(lista_exp[1])
-        col_y = self._evaluar_param_columna(lista_exp[2])
-
-        tasa = float(self.visit(lista_exp[3])) if len(lista_exp) > 3 else 0.01
-        epocas = int(self.visit(lista_exp[4])) if len(lista_exp) > 4 else 1000
-
-        x_vals = self._extraer_vector_numerico(tabla, col_x, linea, columna)
-        y_vals = self._extraer_vector_numerico(tabla, col_y, linea, columna)
-
-        return ml.entrenar_regresion_lineal(x_vals, y_vals, tasa=tasa, epocas=epocas)
-
-    def visitCocoRegresionPoli(self, ctx):
-        """Entrena una regresion polinomial: regresion_polinomial(tabla, col_x, col_y)."""
-        linea = ctx.start.line
-        columna = ctx.start.column
-        lista_exp = ctx.listaArgumentos().expresion() if ctx.listaArgumentos() else []
-
-        if len(lista_exp) < 3:
-            raise TypeError(
-                f"Error semantico (linea {linea}, columna {columna}): "
-                f"'regresion_polinomial' requiere al menos 3 argumentos: (tabla, columna_x, columna_y)."
-            )
-
-        tabla = self.visit(lista_exp[0])
-        col_x = self._evaluar_param_columna(lista_exp[1])
-        col_y = self._evaluar_param_columna(lista_exp[2])
-
-        x_vals = self._extraer_vector_numerico(tabla, col_x, linea, columna)
-        y_vals = self._extraer_vector_numerico(tabla, col_y, linea, columna)
-
-        return ml.entrenar_regresion_polinomial(x_vals, y_vals)
-
-    def visitCocoPerceptron(self, ctx):
-        """Crea o entrena un perceptron:
-        - Manual: perceptron(w1, w2, b)
-        - Entrenamiento: perceptron(tabla, col_x1, col_x2, col_y, [tasa], [epocas])
-        """
-        linea = ctx.start.line
-        columna = ctx.start.column
-        lista_exp = ctx.listaArgumentos().expresion() if ctx.listaArgumentos() else []
-
-        if len(lista_exp) == 3:
-            arg0 = self.visit(lista_exp[0])
-            if not isinstance(arg0, Tabla):
-                w1 = float(arg0)
-                w2 = float(self.visit(lista_exp[1]))
-                b = float(self.visit(lista_exp[2]))
-                return ml.crear_perceptron_manual(w1, w2, b)
-
-        if len(lista_exp) < 4:
-            raise TypeError(
-                f"Error semantico (linea {linea}, columna {columna}): "
-                f"'perceptron' espera 3 argumentos numericos (w1, w2, b) o al menos 4 (tabla, x1, x2, y)."
-            )
-
-        tabla = self.visit(lista_exp[0])
-        col_x1 = self._evaluar_param_columna(lista_exp[1])
-        col_x2 = self._evaluar_param_columna(lista_exp[2])
-        col_y = self._evaluar_param_columna(lista_exp[3])
-
-        tasa = float(self.visit(lista_exp[4])) if len(lista_exp) > 4 else 0.1
-        epocas = int(self.visit(lista_exp[5])) if len(lista_exp) > 5 else 1000
-
-        x1_vals = self._extraer_vector_numerico(tabla, col_x1, linea, columna)
-        x2_vals = self._extraer_vector_numerico(tabla, col_x2, linea, columna)
-        y_vals = self._extraer_vector_numerico(tabla, col_y, linea, columna)
-
-        return ml.entrenar_perceptron(x1_vals, x2_vals, y_vals, tasa=tasa, epocas=epocas)
-
-    def visitCocoCalcular(self, ctx):
-        """Evalua un modelo con datos de entrada: calcular(modelo, x) o calcular(neurona, x1, x2)."""
-        linea = ctx.start.line
-        columna = ctx.start.column
-        lista_exp = ctx.listaArgumentos().expresion() if ctx.listaArgumentos() else []
-
-        if len(lista_exp) < 2:
-            raise TypeError(
-                f"Error semantico (linea {linea}, columna {columna}): "
-                f"'calcular' requiere al menos un modelo y una entrada: calcular(modelo, ...)."
-            )
-
-        modelo = self.visit(lista_exp[0])
-        if not isinstance(modelo, dict) or "tipo" not in modelo:
-            raise TypeError(
-                f"Error semantico (linea {linea}, columna {columna}): "
-                f"el primer argumento de 'calcular' debe ser un modelo o ecuacion valida, no {type(modelo).__name__}."
-            )
-
-        tipo_mod = modelo["tipo"]
-        valores = [self.visit(exp) for exp in lista_exp[1:]]
-
-        if tipo_mod == "lineal":
-            if len(valores) != 1:
-                raise TypeError(
-                    f"Error semantico (linea {linea}, columna {columna}): "
-                    f"la ecuacion lineal espera 1 variable x, pero se pasaron {len(valores)}."
-                )
-            x = float(valores[0])
-            res = modelo["m"] * x + modelo["b"]
-            return round(res, 2)
-
-        elif tipo_mod == "polinomial":
-            if len(valores) != 1:
-                raise TypeError(
-                    f"Error semantico (linea {linea}, columna {columna}): "
-                    f"la ecuacion polinomial espera 1 variable x, pero se pasaron {len(valores)}."
-                )
-            x = float(valores[0])
-            res = modelo["a"] * (x ** 2) + modelo["b"] * x + modelo["c"]
-            return round(res, 2)
-
-        elif tipo_mod == "perceptron":
-            pesos = modelo["pesos"]
-            sesgo = modelo["sesgo"]
-            if len(valores) != len(pesos):
-                raise TypeError(
-                    f"Error semantico (linea {linea}, columna {columna}): "
-                    f"el perceptron espera {len(pesos)} entrada(s), pero se pasaron {len(valores)}."
-                )
-            z = sum(float(w) * float(x) for w, x in zip(pesos, valores)) + float(sesgo)
-            return 1 if z >= 0 else 0
-
-        else:
-            raise ValueError(
-                f"Error semantico (linea {linea}, columna {columna}): tipo de modelo '{tipo_mod}' desconocido."
-            )
-
     def visitSentencia(self, ctx):
-        """Ejecuta una sola sentencia (asignacion, guardar, graficar, imprimir, funcion o expresion)."""
+        """Ejecuta una sola sentencia (asignacion, guardar o graficar)."""
         if ctx.asignacion() is not None:
             return self.visitAsignacion(ctx.asignacion())
         elif ctx.cocoGuardarCSV() is not None:
             return self.visitCocoGuardarCSV(ctx.cocoGuardarCSV())
         elif ctx.cocoGraficar() is not None:
             return self.visitCocoGraficar(ctx.cocoGraficar())
-        elif ctx.cocoImprimir() is not None:
-            return self.visitCocoImprimir(ctx.cocoImprimir())
-        elif ctx.cocoDefFuncion() is not None:
-            return self.visitCocoDefFuncion(ctx.cocoDefFuncion())
-        elif ctx.cocoRetornar() is not None:
-            return self.visitCocoRetornar(ctx.cocoRetornar())
-        elif ctx.cocoMientras() is not None:
-            return self.visitCocoMientras(ctx.cocoMientras())
-        elif ctx.expresion() is not None:
-            return self.visit(ctx.expresion())
         return None
 
     def visitPrograma(self, ctx):
