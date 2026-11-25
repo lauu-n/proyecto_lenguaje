@@ -469,7 +469,6 @@ cocoGrafica
     | COCOLINEAS
     | COCOHISTOGRAMA
     | COCODISPERSION
-    | COCOCAJA
     ;
 
 // -------------------------
