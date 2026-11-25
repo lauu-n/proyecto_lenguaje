@@ -41,8 +41,8 @@ def mostrar_banner():
     print("=" * 60)
     print("  Cocosette — Terminal interactiva")
     print("  DSL para Ciencia de Datos y Visualización")
-    print("  Escribe 'ayuda' para ver los comandos disponibles")
-    print("  Escribe 'salir' o Ctrl+D para terminar")
+    print("  Escribe 'cocoayuda' para ver los comandos disponibles")
+    print("  Escribe 'cocosalir' o Ctrl+D para terminar")
     print("=" * 60)
     print()
 
@@ -50,8 +50,8 @@ def mostrar_banner():
 def mostrar_ayuda():
     print("""
 Comandos especiales de la terminal:
-  ayuda / help          → muestra esta ayuda
-  salir / exit / quit   → cierra la terminal
+  cocoayuda / help          → muestra esta ayuda
+  cocosalir / exit / quit   → cierra la terminal
   limpiar / clear       → limpia la pantalla
   vars / variables      → muestra las variables definidas
   memoria               → muestra el contenido de la memoria
@@ -144,10 +144,10 @@ def modo_interactivo(visitor: InterpreteVisitor = None):
             # Comandos especiales (solo cuando no hay buffer pendiente)
             if not buffer:
                 cmd = linea.strip().lower()
-                if cmd in ("salir", "exit", "quit"):
-                    print("Hasta luego.")
+                if cmd in ("cocosalir", "exit", "quit"):
+                    print("cocoadiós.")
                     break
-                if cmd in ("ayuda", "help"):
+                if cmd in ("cocoayuda", "help"):
                     mostrar_ayuda()
                     continue
                 if cmd in ("limpiar", "clear"):
@@ -175,10 +175,10 @@ def modo_interactivo(visitor: InterpreteVisitor = None):
                 buffer = []
 
         except EOFError:          # Ctrl+D
-            print("\nHasta luego.")
+            print("\ncocoadiós.")
             break
         except KeyboardInterrupt: # Ctrl+C
-            print("\n(Interrumpido. Escribe 'salir' para terminar)")
+            print("\n(Interrumpido. Escribe 'cocosalir' para terminar)")
             buffer = []
 
 
