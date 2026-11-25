@@ -710,6 +710,3 @@ for t in xt:
     L.linea(fx(t), py1, fx(t), py1 + 5, (0, 0, 0))
     txt = _fmt(t)
     L.texto(fx(t) - ancho_texto(txt) // 2, py1 + 10, txt)
-
-print("Marcas y:", yt)
-print("Marcas x:", xt)
