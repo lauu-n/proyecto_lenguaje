@@ -56,6 +56,7 @@ FUENTE = {
     ")": (0x08, 0x04, 0x02, 0x02, 0x02, 0x04, 0x08),
     "=": (0, 0, 0x1F, 0, 0x1F, 0, 0),
     "?": (0x0E, 0x11, 0x01, 0x02, 0x04, 0, 0x04),
+    "^": (0x04, 0x0A, 0x11, 0, 0, 0, 0),
 }
 
 # Quita tildes y pasa a mayusculas porque la fuente bitmap solo tiene A-Z.
@@ -177,24 +178,66 @@ def _prep_histograma(tabla, x):
 
     return {"cats": None, "xlim": (lo, hi), "ylim": (0, max(cuentas)), "dibujar": dibujar}
 
+
+# Muestrear la curva. Valida el modelo antes de usarlo.
+def _evaluar(modelo, x):
+    """Evalua un modelo de ml.py en un punto x."""
+    if not isinstance(modelo, dict) or "tipo" not in modelo:
+        raise TypeError("Error semantico: 'ajuste' debe ser un modelo entrenado.")
+    if modelo["tipo"] == "lineal":
+        return modelo["m"] * x + modelo["b"]
+    if modelo["tipo"] == "polinomial":
+        return modelo["a"] * x * x + modelo["b"] * x + modelo["c"]
+    raise ValueError(
+        f"Error semantico: no se puede graficar un modelo '{modelo['tipo']}'; "
+        f"solo 'lineal' y 'polinomial'."
+    )
+
+def _signo(v):
+    return f"- {abs(v):g}" if v < 0 else f"+ {v:g}"
+
+# evita que salga + -3
+def _ecuacion(modelo):
+    """Texto de la ecuacion, para mostrarlo en la leyenda."""
+    if modelo["tipo"] == "lineal":
+        return f"y = {modelo['m']:g}x {_signo(modelo['b'])}"
+    return f"y = {modelo['a']:g}x^2 {_signo(modelo['b'])}x {_signo(modelo['c'])}"
+
+
+
+
 """
 DISPERSiÓN
 Cada fila es un punto (x, y), y se dibuja un círculo de radio 5 en (fx(x), fy(y)). 
 Aquí los dos ejes son numéricos, y por eso se valida con _num tanto x como y.
+Se muestrean puntos y se unen
+ylim incluye la curva
 """
-def _prep_dispersion(tabla, x, y):
+def _prep_dispersion(tabla, x, y, modelo=None):
     pares = [(_num(f[x], x), _num(f[y], y)) for f in tabla.filas
              if f.get(x) is not None and f.get(y) is not None]
     if not pares:
         raise ValueError("Error semantico: no hay datos validos para graficar.")
     xs, ys = [p[0] for p in pares], [p[1] for p in pares]
+    lo, hi = min(xs), max(xs)
+    ymin, ymax = min(ys), max(ys)
+
+    # Curva del modelo: 101 puntos entre el x minimo y el maximo
+    curva = []
+    if modelo is not None:
+        curva = [(lo + (hi - lo) * i / 100, _evaluar(modelo, lo + (hi - lo) * i / 100))
+                 for i in range(101)]
+        cy = [p[1] for p in curva]
+        ymin, ymax = min(ymin, min(cy)), max(ymax, max(cy))   # que la curva quepa
 
     def dibujar(L, fx, fy, color):
         for a, b in pares:
             L.circulo(fx(a), fy(b), 5, color)
+        for p, q in zip(curva, curva[1:]):
+            L.linea(fx(p[0]), fy(p[1]), fx(q[0]), fy(q[1]), PALETA[1], grosor=3)
 
-    return {"cats": None, "xlim": (min(xs), max(xs)),
-            "ylim": (min(ys), max(ys)), "dibujar": dibujar}
+    return {"cats": None, "xlim": (lo, hi), "ylim": (ymin, ymax), "dibujar": dibujar,
+            "etiqueta_modelo": _ecuacion(modelo) if modelo is not None else None}
 
 """
 LÍNEAS
@@ -245,7 +288,7 @@ PALETA = [(182, 149, 192), (255, 127, 14), (44, 160, 44), (214, 39, 40), (148, 1
 TIPOS = ("barras", "lineas", "histograma", "dispersion")
 
 def graficar(tipo, tabla, x, y=None, titulo=None, etiqueta_x=None,
-             etiqueta_y=None, leyenda=None, ruta=None):
+             etiqueta_y=None, leyenda=None, ruta=None, modelo=None):
     """Dibuja una grafica a partir de una Tabla y la guarda como PNG."""
     if tipo not in TIPOS:                                         # NUEVO
         raise ValueError(f"Tipo de grafico desconocido: '{tipo}'. Validos: {TIPOS}")
@@ -253,12 +296,14 @@ def graficar(tipo, tabla, x, y=None, titulo=None, etiqueta_x=None,
     tabla._validar_columnas([x] + ([y] if y else []))
     if tipo != "histograma" and y is None:                        # NUEVO
         raise ValueError(f"Error semantico: el grafico '{tipo}' requiere un eje y.")
+    if modelo is not None and tipo != "dispersion":
+        raise ValueError("Error semantico: 'ajuste' solo se puede usar con graficos de dispersion.")
 
     preparadores = {                                              # NUEVO
         "barras": lambda: _prep_barras(tabla, x, y),
         "lineas": lambda: _prep_lineas(tabla, x, y),
         "histograma": lambda: _prep_histograma(tabla, x),
-        "dispersion": lambda: _prep_dispersion(tabla, x, y),
+        "dispersion": lambda: _prep_dispersion(tabla, x, y, modelo),
     }
 
     prep = preparadores[tipo]()
@@ -333,13 +378,25 @@ def graficar(tipo, tabla, x, y=None, titulo=None, etiqueta_x=None,
     et_y = etiqueta_y or (y if y else "frecuencia")               # NUEVO
     L.texto_vertical(15, (py0 + py1) // 2 + ancho_texto(et_y) // 2, et_y)
 
+    # Leyenda: una fila por serie (puntos de datos y/o curva del modelo)
+    entradas = []
     if leyenda:
-        w = ancho_texto(leyenda) + 40
+        entradas.append((color, "cuadro", leyenda))
+    if prep.get("etiqueta_modelo"):
+        entradas.append((PALETA[1], "linea", prep["etiqueta_modelo"]))
+    if entradas:
+        w = max(ancho_texto(t) for _, _, t in entradas) + 40
+        alto = 24 * len(entradas) + 4
         lx, ly = px1 - w - 10, py0 + 10
-        L.rect(lx, ly, lx + w, ly + 28, (255, 255, 255))
-        L.contorno(lx, ly, lx + w, ly + 28, (120, 120, 120))
-        L.rect(lx + 8, ly + 7, lx + 22, ly + 21, color)
-        L.texto(lx + 30, ly + 7, leyenda)
+        L.rect(lx, ly, lx + w, ly + alto, (255, 255, 255))
+        L.contorno(lx, ly, lx + w, ly + alto, (120, 120, 120))
+        for i, (c, forma, t) in enumerate(entradas):
+            ry = ly + 5 + 24 * i
+            if forma == "cuadro":
+                L.rect(lx + 8, ry + 1, lx + 22, ry + 15, c)
+            else:
+                L.linea(lx + 8, ry + 8, lx + 22, ry + 8, c, grosor=3)
+            L.texto(lx + 30, ry + 1, t)
 
     # Salida
     if ruta:
