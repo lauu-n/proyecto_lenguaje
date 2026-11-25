@@ -452,6 +452,7 @@ cocoGraficar
         ( COCOETIQUETAY ety=STRING )?
         ( COCOLEYENDA leyenda=STRING )?
         ( COCOGUARDAR COMO ruta=STRING )?
+        ( COCOAJUSTE listaModelos )?
     ;
 
 // -------------------------
@@ -480,6 +481,10 @@ ejeX
 
 ejeY
     : {self._input.LT(1).text == 'y'}? ID
+    ;
+
+listaModelos
+    : ID ( ',' ID )*
     ;
 
 // -------------------------
