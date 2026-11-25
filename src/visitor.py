@@ -457,17 +457,19 @@ class InterpreteVisitor(CocosetteVisitor):
         else:
             col_y = None
 
-        # Modelo entrenado opcional
-        modelo = None
-        if hasattr(ctx, "modelo") and ctx.modelo is not None:
-            nombre_modelo = ctx.modelo.text
-            modelo = self.memoria.obtener(nombre_modelo, linea=linea, columna=columna)
-
-            if not isinstance(modelo, dict) or "tipo" not in modelo:
-                raise TypeError(
-                    f"Error semantico (linea {linea}, columna {columna}): "
-                    f"'{nombre_modelo}' no es un modelo entrenado."
-                )
+        # Modelo entrenado (opcional) para graficar predicciones
+        modelos = []
+        if ctx.listaModelos() is not None:
+            for nodo in ctx.listaModelos().ID():
+                nombre_modelo = nodo.getText()
+                m = self.memoria.obtener(nombre_modelo, linea=linea, columna=columna)
+                if not isinstance(m, dict) or "tipo" not in m:
+                    raise TypeError(
+                        f"Error semantico (linea {linea}, columna {columna}): "
+                        f"'{nombre_modelo}' no es un modelo entrenado."
+                    )
+                modelos.append(m)
+        modelo = modelos if len(modelos) > 1 else (modelos[0] if modelos else None)
 
         titulo_val = texto(ctx.titulo) if hasattr(ctx, "titulo") and ctx.titulo is not None else None
         etx_val = texto(ctx.etx) if hasattr(ctx, "etx") and ctx.etx is not None else None
