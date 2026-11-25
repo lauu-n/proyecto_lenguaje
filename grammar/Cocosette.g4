@@ -445,6 +445,7 @@ cocoGraficar
     : COCOGRAFICAR cocoGrafica tabla=ID
         ejeX colx=ID
         ( ejeY coly=ID )?
+        ( COCOPORCLASE colclase=ID )?
         ( COCOAJUSTE modelo=ID )?
         ( COCOTITULO titulo=STRING )?
         ( COCOETIQUETAX etx=STRING )?
@@ -617,6 +618,7 @@ COCOETIQUETAX     : 'etiqueta_x';
 COCOETIQUETAY     : 'etiqueta_y';
 COCOLEYENDA       : 'leyenda';
 COCOAJUSTE        : 'ajuste';
+COCOPORCLASE      : 'por_clase';
 
 
 // -------------------------
