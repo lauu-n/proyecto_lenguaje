@@ -483,6 +483,8 @@ class InterpreteVisitor(CocosetteVisitor):
                 idx_ruta = len(ctx.STRING()) - 1
                 ruta_val = quitar_comillas(ctx.STRING(idx_ruta).getText())
 
+        col_clase = ctx.colclase.text if ctx.colclase is not None else None
+
         # Recoge errores y los reporta con linea y columna de la sentencia de graficar
         try:
             mensaje = graficar(
@@ -496,6 +498,7 @@ class InterpreteVisitor(CocosetteVisitor):
                 leyenda=leyenda_val,
                 ruta=ruta_val,
                 modelo=modelo,
+                col_clase=col_clase,
             )
         except (KeyError, TypeError, ValueError) as error:
             detalle = error.args[0] if error.args else str(error)
