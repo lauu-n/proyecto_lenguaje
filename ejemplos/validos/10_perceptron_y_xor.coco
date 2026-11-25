@@ -35,3 +35,30 @@ imprimir xor_10;
 # Caso (1, 1) -> 0
 xor_11 = calcular(n_salida, calcular(n_nand, 1, 1), calcular(n_or, 1, 1));
 imprimir xor_11;
+
+# Grafica del perceptron AND
+datos_and = cargar "datos/compuerta_and.csv";
+
+graficar dispersion datos_and
+x x1
+y x2
+por_clase y
+ajuste neurona_and
+titulo "Perceptron: compuerta AND"
+etiqueta_x "Entrada x1"
+etiqueta_y "Entrada x2"
+guardar como "salidas/ejemplo10_and.png";
+
+
+# Dataset XOR
+datos_xor = cargar "datos/compuerta_xor.csv";
+
+# Grafica de la red neuronal XOR
+graficar dispersion datos_xor
+x x1
+y x2
+por_clase y
+titulo "Red neuronal multicapa: XOR"
+etiqueta_x "Entrada x1"
+etiqueta_y "Entrada x2"
+guardar como "salidas/ejemplo10_xor.png";
