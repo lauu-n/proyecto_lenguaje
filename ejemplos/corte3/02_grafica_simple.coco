@@ -1,0 +1,6 @@
+ventas = cargar "datos/ventas.csv";
+
+graficar barras ventas
+    x ciudad
+    y unidades
+    guardar como "salidas/grafica_simple.png";

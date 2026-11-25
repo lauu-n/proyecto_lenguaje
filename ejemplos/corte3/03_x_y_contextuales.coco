@@ -1,0 +1,24 @@
+# x e y son identificadores normales fuera de "graficar"
+x = 10;
+y = 20;
+imprimir x + y;
+
+contador = 1;
+mientras (contador <= 3) {
+    x = x + contador;
+    contador = contador + 1;
+}
+imprimir x;
+
+# Y siguen funcionando como ejes (y como nombres de columna) en graficar
+datos = cargar "datos/curva.csv";
+modelo = regresion_polinomial(datos, "x", "y");
+imprimir modelo;
+
+graficar dispersion datos
+    x x
+    y y
+    ajuste modelo
+    titulo "Parabola con columnas x e y"
+    leyenda "Datos"
+    guardar como "salidas/curva_xy.png";

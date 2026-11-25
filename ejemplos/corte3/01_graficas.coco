@@ -1,0 +1,52 @@
+# Corte III: 4 graficas con datos de ventas
+
+ventas = cargar "datos/ventas.csv";
+
+limpias = ventas
+    |> eliminar_duplicados
+    |> eliminar_nulos
+    |> crear total = unidades * precio;
+
+# 1. Barras: ingreso total por ciudad
+resumen = limpias
+    |> agrupar por [ciudad]
+    |> resumir ingreso = suma(total), registros = contar();
+
+graficar barras resumen
+    x ciudad
+    y ingreso
+    titulo "Ingresos por ciudad"
+    etiqueta_x "Ciudad"
+    etiqueta_y "Ingreso (COP)"
+    leyenda "Ingreso total"
+    guardar como "salidas/ingresos_ciudad.png";
+
+# 2. Histograma: distribucion de unidades (solo necesita x)
+graficar histograma limpias
+    x unidades
+    titulo "Distribucion de unidades"
+    etiqueta_x "Unidades por venta"
+    guardar como "salidas/hist_unidades.png";
+
+# 3. Dispersion: relacion entre unidades y precio
+graficar dispersion limpias
+    x unidades
+    y precio
+    titulo "Unidades vs precio"
+    etiqueta_y "Precio (COP)"
+    leyenda "Ventas"
+    guardar como "salidas/dispersion.png";
+
+# 4. Lineas: ingreso diario en el tiempo
+por_fecha = limpias
+    |> agrupar por [fecha]
+    |> resumir ingreso = suma(total)
+    |> ordenar por fecha;
+
+graficar lineas por_fecha
+    x fecha
+    y ingreso
+    titulo "Ingreso diario"
+    etiqueta_x "Fecha"
+    etiqueta_y "Ingreso (COP)"
+    guardar como "salidas/lineas_fecha.png";
